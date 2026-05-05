@@ -1,0 +1,550 @@
+/* ────────────────────────────────────────────────
+   BODY / LAYOUT
+──────────────────────────────────────────────── */
+body {
+  @apply min-h-screen bg-slate-50 text-slate-900;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.10) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+    linear-gradient(160deg, #f0f9ff 0%, #f8fafc 55%, #eef2ff 100%);
+}
+
+.app-layout {
+  @apply min-h-screen px-4 py-6 sm:px-6 lg:px-10;
+}
+
+.app-shell {
+  @apply mx-auto flex w-full max-w-7xl flex-col gap-6;
+}
+
+/* ────────────────────────────────────────────────
+   HERO PANEL
+──────────────────────────────────────────────── */
+.hero-panel {
+  @apply relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950 px-7 py-8 text-white shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:px-10;
+}
+
+.hero-content {
+  @apply relative z-10 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between;
+}
+
+.hero-orb {
+  @apply absolute rounded-full blur-3xl pointer-events-none;
+}
+
+.hero-orb-left {
+  top: -4rem;
+  left: -3rem;
+  height: 16rem;
+  width: 16rem;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22), transparent 65%);
+}
+
+.hero-orb-right {
+  right: -3rem;
+  bottom: -5rem;
+  height: 18rem;
+  width: 18rem;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18), transparent 65%);
+}
+
+.hero-copy {
+  @apply max-w-2xl;
+}
+
+.hero-kicker {
+  @apply mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/25 bg-sky-400/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-sky-300;
+}
+
+.hero-copy h1 {
+  @apply text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl;
+}
+
+.hero-copy p {
+  @apply mt-3 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base;
+}
+
+.main-nav {
+  @apply xl:min-w-[26rem];
+}
+
+.nav-tab {
+  @apply rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition-all duration-200 hover:border-white/20 hover:bg-white/10;
+}
+
+.nav-tab.is-active {
+  @apply border-sky-400/40 bg-sky-400/10 ring-1 ring-inset ring-sky-400/20;
+}
+
+.nav-tab-single {
+  @apply block;
+}
+
+.nav-tab-title {
+  @apply block text-sm font-bold text-white sm:text-base;
+}
+
+.nav-tab-text {
+  @apply mt-1 block text-xs leading-5 text-slate-400;
+}
+
+/* ────────────────────────────────────────────────
+   WORKSPACE GRID
+──────────────────────────────────────────────── */
+.workspace-grid {
+  @apply grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem];
+}
+
+.workspace-main,
+.workspace-side {
+  @apply min-w-0;
+}
+
+/* ────────────────────────────────────────────────
+   CARDS
+──────────────────────────────────────────────── */
+.content-card,
+.summary-panel {
+  @apply overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_4px_24px_rgba(15,23,42,0.08)] md:p-8;
+}
+
+.content-card-hero {
+  @apply flex flex-col gap-6;
+}
+
+.module-header,
+.section-card-header {
+  @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between;
+}
+
+.summary-panel-head {
+  @apply relative overflow-hidden rounded-2xl p-5 flex flex-col gap-2;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1e3f 60%, #0f2027 100%);
+}
+
+.card-eyebrow {
+  @apply mb-2 inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-600 ring-1 ring-sky-200/70;
+}
+
+.module-header h2 {
+  @apply text-2xl font-black tracking-tight text-slate-900 sm:text-3xl;
+}
+
+.section-card h3 {
+  @apply text-xl font-extrabold tracking-tight text-slate-900;
+}
+
+.summary-panel-head h3 {
+  @apply text-lg font-black tracking-tight text-white leading-snug;
+}
+
+.summary-panel-head p {
+  @apply text-xs leading-5 text-slate-400;
+}
+
+.module-header p,
+.section-card-header p {
+  @apply mt-1 text-sm leading-6 text-slate-500;
+}
+
+.summary-panel-head .card-eyebrow {
+  @apply bg-violet-400/15 text-violet-300 ring-1 ring-violet-400/25 text-[10px];
+}
+
+.summary-panel-head::before {
+  content: '';
+  position: absolute;
+  top: -2rem;
+  right: -2rem;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139,92,246,0.30), transparent 70%);
+  pointer-events: none;
+}
+
+.summary-panel-head::after {
+  content: '';
+  position: absolute;
+  bottom: -1.5rem;
+  left: -1.5rem;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14,165,233,0.22), transparent 70%);
+  pointer-events: none;
+}
+
+.module-badge,
+.section-chip {
+  @apply flex-none inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500;
+}
+
+/* ────────────────────────────────────────────────
+   PROGRESS BAR
+──────────────────────────────────────────────── */
+.progress-block {
+  @apply rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:p-5;
+}
+
+.progress-topline {
+  @apply flex items-center justify-between gap-2;
+}
+
+.progress-caption {
+  @apply text-xs font-bold uppercase tracking-widest text-slate-400;
+}
+
+.progress-percent {
+  @apply text-sm font-black text-sky-600;
+}
+
+.progress-track {
+  @apply mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200;
+}
+
+.progress-fill {
+  @apply h-full rounded-full transition-all duration-500 ease-out;
+  background: linear-gradient(90deg, #0ea5e9 0%, #3b82f6 50%, #6366f1 100%);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.35);
+}
+
+.progress-steps {
+  @apply mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.progress-step {
+  @apply flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 transition-colors;
+}
+
+.progress-step.is-active {
+  @apply border-sky-200 bg-sky-50;
+}
+
+.progress-step.is-completed {
+  @apply border-emerald-200 bg-emerald-50;
+}
+
+.progress-step-dot {
+  @apply flex h-7 w-7 flex-none items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white;
+}
+
+.progress-step.is-active .progress-step-dot {
+  @apply bg-sky-600;
+}
+
+.progress-step.is-completed .progress-step-dot {
+  @apply bg-emerald-600;
+}
+
+.progress-step strong {
+  @apply block text-xs font-bold text-slate-800 leading-tight;
+}
+
+.progress-step p {
+  @apply mt-0.5 text-[11px] leading-4 text-slate-500;
+}
+
+/* ────────────────────────────────────────────────
+   SECTION CARD (steps)
+──────────────────────────────────────────────── */
+.section-card {
+  @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_2px_12px_rgba(15,23,42,0.06)] sm:p-6;
+}
+
+/* ────────────────────────────────────────────────
+   FORM GRID
+──────────────────────────────────────────────── */
+.form-grid {
+  @apply mt-5 grid gap-3 md:grid-cols-2;
+}
+
+.form-grid-wide {
+  @apply xl:grid-cols-2;
+}
+
+.form-toggle-wide {
+  @apply md:col-span-2;
+}
+
+/* ────────────────────────────────────────────────
+   FIELD SHELL
+──────────────────────────────────────────────── */
+.field-shell {
+  @apply rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all duration-150
+         hover:border-slate-300 hover:bg-white hover:shadow-sm;
+}
+
+.field-shell:focus-within {
+  @apply border-sky-300 bg-white shadow-[0_0_0_3px_rgba(14,165,233,0.12)];
+}
+
+.field-shell.has-error {
+  @apply border-red-300 bg-red-50;
+}
+
+.field-shell.has-error:focus-within {
+  @apply border-red-400 bg-white shadow-[0_0_0_3px_rgba(239,68,68,0.12)];
+}
+
+.field-error {
+  @apply mt-1.5 flex items-center gap-1 text-xs font-semibold text-red-600;
+}
+
+.field-error::before {
+  content: '⚠';
+  font-size: 0.65rem;
+}
+
+.field-head {
+  @apply mb-3 flex items-start gap-3;
+}
+
+.field-icon {
+  @apply flex h-9 w-9 flex-none items-center justify-center rounded-xl
+         bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md;
+}
+
+.field-label {
+  @apply block text-sm font-bold text-slate-800;
+}
+
+.field-hint {
+  @apply mt-0.5 text-xs leading-4 text-slate-400;
+}
+
+/* ────────────────────────────────────────────────
+   INPUTS
+──────────────────────────────────────────────── */
+.input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium
+         text-slate-900 shadow-sm transition-all placeholder:text-slate-400
+         focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100;
+}
+
+.input-readonly {
+  @apply cursor-default select-all bg-slate-100 text-sky-700 font-bold;
+}
+
+/* ────────────────────────────────────────────────
+   TOGGLE SWITCH
+──────────────────────────────────────────────── */
+.toggle-shell {
+  @apply flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200
+         bg-slate-50 px-4 py-3.5 transition-all duration-150 hover:border-slate-300 hover:bg-white;
+}
+
+.toggle-shell.is-disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.toggle-shell input {
+  @apply sr-only;
+}
+
+.toggle-track {
+  @apply relative flex h-5 w-10 flex-none items-center rounded-full bg-slate-300 transition-colors duration-200;
+}
+
+.toggle-thumb {
+  @apply absolute left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200;
+}
+
+.toggle-thumb.is-on {
+  @apply translate-x-5;
+}
+
+.toggle-shell:has(input:checked) .toggle-track {
+  @apply bg-sky-500;
+}
+
+.toggle-label {
+  @apply text-sm font-semibold text-slate-700;
+}
+
+/* ────────────────────────────────────────────────
+   SECTION ACTIONS
+──────────────────────────────────────────────── */
+.section-actions {
+  @apply mt-6 flex flex-wrap gap-3 sm:flex-row sm:items-center sm:justify-end;
+}
+
+.split-actions {
+  @apply sm:justify-between;
+}
+
+/* ────────────────────────────────────────────────
+   SUMMARY PANEL (right sidebar)
+──────────────────────────────────────────────── */
+.summary-panel {
+  @apply sticky top-6 flex flex-col gap-4;
+}
+
+.summary-list {
+  @apply grid gap-2;
+}
+
+.summary-item {
+  @apply flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5;
+}
+
+.summary-item span {
+  @apply text-xs font-semibold text-slate-500 leading-tight;
+}
+
+.summary-item strong {
+  @apply text-xs font-bold text-slate-900 text-right leading-tight;
+}
+
+.summary-item.highlight {
+  @apply border-sky-200 bg-gradient-to-r from-sky-50 to-blue-50;
+}
+
+.summary-item.highlight strong {
+  @apply text-sky-700;
+}
+
+.summary-item.highlight-green {
+  @apply border-emerald-200 bg-emerald-50;
+}
+
+.summary-item.highlight-green strong {
+  @apply text-emerald-700;
+}
+
+.summary-actions {
+  @apply mt-1 grid gap-2;
+}
+
+/* ────────────────────────────────────────────────
+   STEP 5 — EXPORT SUMMARY
+──────────────────────────────────────────────── */
+.summary-json {
+  @apply mt-4 max-h-[24rem] overflow-auto rounded-2xl border border-slate-800
+         bg-slate-950 px-5 py-5 text-xs leading-6 text-cyan-200 shadow-inner font-mono;
+}
+
+.export-summary-grid {
+  @apply mt-4 grid gap-3 sm:grid-cols-2;
+}
+
+.export-card {
+  @apply rounded-xl border border-slate-200 bg-slate-50 p-4;
+}
+
+.export-card-highlight {
+  @apply rounded-xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 p-4;
+}
+
+.export-card-green {
+  @apply rounded-xl border border-emerald-200 bg-emerald-50 p-4;
+}
+
+.export-card-label {
+  @apply text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1;
+}
+
+.export-card-value {
+  @apply text-base font-black text-slate-900;
+}
+
+.export-card-highlight .export-card-label {
+  @apply text-sky-500;
+}
+
+.export-card-highlight .export-card-value {
+  @apply text-sky-700;
+}
+
+.export-card-green .export-card-label {
+  @apply text-emerald-600;
+}
+
+.export-card-green .export-card-value {
+  @apply text-emerald-700;
+}
+
+/* ────────────────────────────────────────────────
+   SAVE STATUS INDICATOR
+──────────────────────────────────────────────── */
+.save-banner {
+  @apply flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-semibold;
+}
+
+.save-banner.saving {
+  @apply border-sky-200 bg-sky-50 text-sky-700;
+}
+
+.save-banner.saved {
+  @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+}
+
+.save-banner.error {
+  @apply border-red-200 bg-red-50 text-red-700;
+}
+
+/* ────────────────────────────────────────────────
+   BUTTONS
+──────────────────────────────────────────────── */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold
+         transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2
+         active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/20
+         hover:from-sky-400 hover:to-blue-500 focus:ring-sky-300;
+}
+
+.btn-secondary {
+  @apply border border-slate-200 bg-white text-slate-700 shadow-sm
+         hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-200;
+}
+
+.btn-success {
+  @apply bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20
+         hover:from-emerald-400 hover:to-emerald-500 focus:ring-emerald-300;
+}
+
+.btn-warning {
+  @apply bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20
+         hover:from-amber-400 hover:to-orange-400 focus:ring-amber-300;
+}
+
+.btn-danger {
+  @apply bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20
+         hover:from-red-400 hover:to-rose-500 focus:ring-red-300;
+}
+
+/* ────────────────────────────────────────────────
+   HISTORIAL
+──────────────────────────────────────────────── */
+.hist-filter-bar {
+  @apply flex flex-wrap gap-3 items-end;
+}
+
+.hist-table {
+  @apply w-full border-collapse text-sm;
+}
+
+.hist-table thead th {
+  @apply bg-slate-50 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider
+         text-slate-500 border-b border-slate-200 whitespace-nowrap;
+}
+
+.hist-table tbody tr {
+  @apply border-b border-slate-100 transition-colors hover:bg-slate-50;
+}
+
+.hist-table tbody td {
+  @apply px-4 py-3 text-slate-700 whitespace-nowrap;
+}
+
+.hist-table tbody td.danger {
+  @apply font-bold text-red-600;
+}
+
+.hist-table tbody td.success {
+  @apply font-bold text-emerald-600;
+}

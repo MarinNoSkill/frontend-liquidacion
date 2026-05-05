@@ -1,0 +1,4 @@
+@import "./components/input.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
