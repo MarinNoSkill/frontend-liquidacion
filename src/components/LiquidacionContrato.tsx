@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Currency, formatCurrency } from '../utils/currency';
+import { exportToExcel } from '../utils/exportToExcel';
 
 const API_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:4000';
 
@@ -67,6 +68,8 @@ export default function LiquidacionContrato({
   const [saved,       setSaved]       = useState(false);
   const [saveMsg,     setSaveMsg]     = useState('');
   const [deleting,    setDeleting]    = useState(false);
+  const [exporting,   setExporting]   = useState(false);
+  const [exportMsg,   setExportMsg]   = useState('');
 
   useEffect(() => { if (liquidacionId !== null) { setSelId(liquidacionId); setSaved(false); setSaveMsg(''); } }, [liquidacionId]);
 
@@ -147,10 +150,43 @@ export default function LiquidacionContrato({
         }),
       });
       const json = await r.json() as { success?: boolean; error?: string };
-      if (json.success) { setSaved(true); setSaveMsg('Guardado correctamente.'); }
-      else setSaveMsg(`Error: ${json.error ?? 'desconocido'}`);
+      if (json.success) {
+        setSaved(true);
+        setSaveMsg('Guardado correctamente. Redirigiendo…');
+        setTimeout(() => onNavigate('historial-contratos'), 800);
+      } else {
+        setSaveMsg(`Error: ${json.error ?? 'desconocido'}`);
+      }
     } catch { setSaveMsg('No se pudo conectar al backend.'); }
     setSaving(false);
+  };
+
+  const handleExport = async () => {
+    if (!hist) { setExportMsg('No hay datos para exportar.'); return; }
+    setExporting(true); setExportMsg('');
+    try {
+      await exportToExcel({
+        propietario:           hist.propietario,
+        propiedad:             hist.propiedad,
+        huesped:               hist.huesped,
+        fecha:                 hist.fecha,
+        ingreso_reserva:       ingresoReserva,
+        mayor_ingreso:         mayorIngreso,
+        menos_comision_airbnb: menosComisionAirbnb,
+        otros_cobros:          otrosCobros,
+        total,
+        recibido_banco:        recibidoBanco,
+        diferencia,
+        menos_comision:        menosComision,
+        menos_iva_comision:    menosIvaComision,
+        retencion_fuente:      retencionFuente,
+        total_a_entregar:      totalAEntregar,
+      });
+      setExportMsg('Excel descargado correctamente.');
+    } catch (e) {
+      setExportMsg(`Error al exportar: ${e instanceof Error ? e.message : 'desconocido'}`);
+    }
+    setExporting(false);
   };
 
   const handleDeleteReserva = async () => {
@@ -360,9 +396,27 @@ export default function LiquidacionContrato({
                   {deleting ? 'Eliminando…' : 'Eliminar reserva de la base de datos'}
                 </button>
               )}
+              <button
+                type="button"
+                disabled={exporting || !hist}
+                onClick={handleExport}
+                style={{
+                  padding: '0.625rem 1.25rem', borderRadius: '0.625rem',
+                  border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d',
+                  fontWeight: 700, cursor: exporting || !hist ? 'not-allowed' : 'pointer',
+                  opacity: exporting || !hist ? 0.6 : 1, fontSize: '0.875rem',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                }}>
+                {exporting ? 'Generando…' : 'Descargar Excel'}
+              </button>
               {saveMsg && (
                 <span style={{ fontSize: '0.875rem', fontWeight: 700, color: saveMsg.startsWith('Error') || saveMsg.startsWith('No') ? '#dc2626' : '#059669' }}>
                   {saveMsg}
+                </span>
+              )}
+              {exportMsg && (
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: exportMsg.startsWith('Error') || exportMsg.startsWith('No') ? '#dc2626' : '#059669' }}>
+                  {exportMsg}
                 </span>
               )}
             </div>
