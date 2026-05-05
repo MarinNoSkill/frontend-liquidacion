@@ -548,3 +548,14 @@ body {
 .hist-table tbody td.success {
   @apply font-bold text-emerald-600;
 }
+
+/* ────────────────────────────────────────────────
+   NAV TABS TEXT TRUNCATION
+──────────────────────────────────────────────── */
+.nav-tab-title {
+  @apply block text-sm font-bold text-white sm:text-base line-clamp-2;
+}
+
+.nav-tab-text {
+  @apply mt-1 block text-xs leading-5 text-slate-400 line-clamp-2;
+}

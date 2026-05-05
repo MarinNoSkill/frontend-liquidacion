@@ -308,7 +308,7 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
   // ── NAV TABS ──
   const navTabs = (
     <nav className="main-nav" aria-label="Módulos">
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
         {[
           { label: 'Liquidación Reserva', sub: 'Flujo completo Airbnb.',               view: 'form' },
           { label: 'Historial',           sub: 'Ver liquidaciones guardadas.',           view: 'historial' },
@@ -318,13 +318,23 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
         ].map(t => (
           <button key={t.view} type="button"
             className={`nav-tab nav-tab-single ${t.view === 'propietario' ? 'is-active' : ''}`}
-            style={{ flex: '1 1 130px' }}
+            style={{ flex: '1 1 120px' }}
             onClick={t.view !== 'propietario' ? () => onNavigate(t.view) : undefined}
           >
             <span className="nav-tab-title">{t.label}</span>
             <span className="nav-tab-text">{t.sub}</span>
           </button>
         ))}
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <button type="button"
+          className="nav-tab nav-tab-single"
+          style={{ flex: '1 1 100%' }}
+          onClick={() => onNavigate('historial-contratos')}
+        >
+          <span className="nav-tab-title">Historial Contratos</span>
+          <span className="nav-tab-text">Ver contratos guardados.</span>
+        </button>
       </div>
     </nav>
   );
@@ -370,7 +380,7 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
       <div className="app-shell">
 
         {/* HERO */}
-        <header className="hero-panel">
+        <header className="hero-panel" style={{ minHeight: '340px' }}>
           <div className="hero-orb hero-orb-left"  style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.22), transparent 65%)' }} />
           <div className="hero-orb hero-orb-right" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.18), transparent 65%)' }} />
           <div className="hero-content">

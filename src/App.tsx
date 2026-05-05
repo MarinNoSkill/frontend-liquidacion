@@ -4,13 +4,35 @@ import Historial from './components/Historial';
 import LiquidacionComisionZectorem from './components/LiquidacionComisionZectorem';
 import LiquidacionPropietario from './components/LiquidacionPropietario';
 import LiquidacionContrato from './components/LiquidacionContrato';
+import HistorialContratos from './components/HistorialContratos';
 import { Currency, CURRENCIES, retrieveCurrency, storeCurrency } from './utils/currency';
 
-type View = 'form' | 'historial' | 'comision' | 'propietario' | 'contrato';
+type View = 'form' | 'historial' | 'comision' | 'propietario' | 'contrato' | 'historial-contratos';
+type ContratoRecord = {
+  id: number;
+  liquidacion_id: number;
+  propietario: string;
+  propiedad: string;
+  huesped: string;
+  numero_reserva: string | null;
+  ingreso_reserva: number | null;
+  mayor_ingreso: number | null;
+  menos_comision_airbnb: number | null;
+  otros_cobros: number | null;
+  total: number | null;
+  recibido_banco: number | null;
+  diferencia: number | null;
+  menos_comision: number | null;
+  menos_iva_comision: number | null;
+  retencion_fuente: number | null;
+  total_a_entregar: number | null;
+  created_at: string;
+};
 
 function App() {
   const [view, setView] = useState<View>('form');
   const [contratoLiqId, setContratoLiqId] = useState<number | null>(null);
+  const [contratoData, setContratoData] = useState<ContratoRecord | null>(null);
   const [currency, setCurrencyState] = useState<Currency>('COP');
 
   useEffect(() => {
@@ -25,11 +47,21 @@ function App() {
   const navigate = (v: string) => {
     if (v.startsWith('contrato:')) {
       setContratoLiqId(Number(v.split(':')[1]) || null);
+      setContratoData(null);
+      setView('contrato');
+    } else if (v.startsWith('contrato-ver:')) {
       setView('contrato');
     } else {
       setContratoLiqId(null);
+      setContratoData(null);
       setView(v as View);
     }
+  };
+
+  const handleLoadContrato = (contrato: ContratoRecord) => {
+    setContratoData(contrato);
+    setContratoLiqId(null);
+    setView('contrato');
   };
 
   const currencySelector = (
@@ -60,9 +92,10 @@ function App() {
     <>
       {currencySelector}
       {view === 'historial' && <Historial onNavigate={navigate} currency={currency} />}
+      {view === 'historial-contratos' && <HistorialContratos onNavigate={navigate} onLoadContrato={handleLoadContrato} currency={currency} />}
       {view === 'comision' && <LiquidacionComisionZectorem onNavigate={navigate} currency={currency} />}
       {view === 'propietario' && <LiquidacionPropietario onNavigate={navigate} currency={currency} />}
-      {view === 'contrato' && <LiquidacionContrato onNavigate={navigate} liquidacionId={contratoLiqId} currency={currency} />}
+      {view === 'contrato' && <LiquidacionContrato onNavigate={navigate} liquidacionId={contratoLiqId} contratoData={contratoData} currency={currency} />}
       {view === 'form' && <LiquidacionAirbnb onNavigate={navigate} currency={currency} />}
     </>
   );

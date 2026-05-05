@@ -137,26 +137,32 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
   // ── NAV TABS compartidos ──
   const navTabs = (
     <nav className="main-nav" aria-label="Módulos">
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('form')}>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('form')}>
           <span className="nav-tab-title">Liquidación Reserva</span>
           <span className="nav-tab-text">Flujo completo de liquidación Airbnb.</span>
         </button>
-        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('historial')}>
+        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('historial')}>
           <span className="nav-tab-title">Historial</span>
           <span className="nav-tab-text">Ver todas las liquidaciones guardadas.</span>
         </button>
-        <button type="button" className="nav-tab is-active nav-tab-single" style={{ flex: '1 1 130px' }}>
+        <button type="button" className="nav-tab is-active nav-tab-single" style={{ flex: '1 1 120px' }}>
           <span className="nav-tab-title">Comisión Zectorem</span>
           <span className="nav-tab-text">Liquidación de comisiones Zectorem.</span>
         </button>
-        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('propietario')}>
+        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('propietario')}>
           <span className="nav-tab-title">Liq. Propietario</span>
           <span className="nav-tab-text">Ingresos y compras del mandante.</span>
         </button>
-        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('contrato')}>
+        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('contrato')}>
           <span className="nav-tab-title">Liq. Contrato</span>
           <span className="nav-tab-text">Liquidación contrato mandante.</span>
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 100%' }} onClick={() => onNavigate('historial-contratos')}>
+          <span className="nav-tab-title">Historial Contratos</span>
+          <span className="nav-tab-text">Ver contratos guardados.</span>
         </button>
       </div>
     </nav>
@@ -336,7 +342,7 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
     <div className="app-layout">
       <div className="app-shell">
 
-        <header className="hero-panel">
+        <header className="hero-panel" style={{ minHeight: '340px' }}>
           <div className="hero-orb hero-orb-left"  style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.22), transparent 65%)' }} />
           <div className="hero-orb hero-orb-right" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.18), transparent 65%)' }} />
           <div className="hero-content">

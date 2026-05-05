@@ -17,24 +17,46 @@ type IngresoRow  = { liquidacion_id: number | null; subtotal: number | null; imp
 type CompraRow   = { liquidacion_id: number | null; valor_bruto: number | null; otros_impuestos: number | null; };
 type ComisionRow = { liquidacion_id: number; comision: number | null; iva_comision_19: number | null; retencion_fuente: number | null; };
 
-const fmt = (v: number | null | undefined) =>
-  formatCurrency(v, currency);
-
 const fmtDate = (d: string) => {
   if (!d) return '';
   const [y, m, day] = d.split('-');
   return `${day}/${m}/${y}`;
 };
 
+type ContratoRecord = {
+  id: number;
+  liquidacion_id: number;
+  propietario: string;
+  propiedad: string;
+  huesped: string;
+  numero_reserva: string | null;
+  ingreso_reserva: number | null;
+  mayor_ingreso: number | null;
+  menos_comision_airbnb: number | null;
+  otros_cobros: number | null;
+  total: number | null;
+  recibido_banco: number | null;
+  diferencia: number | null;
+  menos_comision: number | null;
+  menos_iva_comision: number | null;
+  retencion_fuente: number | null;
+  total_a_entregar: number | null;
+  created_at: string;
+};
+
 export default function LiquidacionContrato({
   onNavigate,
   liquidacionId,
+  contratoData,
   currency = 'COP',
 }: {
   onNavigate: (view: string) => void;
   liquidacionId: number | null;
+  contratoData?: ContratoRecord | null;
   currency?: Currency;
 }) {
+  const fmt = (v: number | null | undefined) =>
+    formatCurrency(v, currency);
   const [historial,   setHistorial]   = useState<HistorialRow[]>([]);
   const [ingresos,    setIngresos]    = useState<IngresoRow[]>([]);
   const [compras,     setCompras]     = useState<CompraRow[]>([]);
@@ -49,6 +71,7 @@ export default function LiquidacionContrato({
   useEffect(() => { if (liquidacionId !== null) { setSelId(liquidacionId); setSaved(false); setSaveMsg(''); } }, [liquidacionId]);
 
   useEffect(() => {
+    if (contratoData) { setLoading(false); return; }
     Promise.all([
       fetch(`${API_URL}/historial`).then(r => r.json()),
       fetch(`${API_URL}/ingresos-propietario`).then(r => r.json()),
@@ -63,7 +86,7 @@ export default function LiquidacionContrato({
       setComisiones(Array.isArray(com) ? com as ComisionRow[] : []);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [contratoData]);
 
   // Refetch compras filtered server-side whenever the selected liquidacion changes
   useEffect(() => {
@@ -74,24 +97,35 @@ export default function LiquidacionContrato({
       .catch(() => setCompras([]));
   }, [selId]);
 
-  const hist    = useMemo(() => historial.find(h => h.liquidacion_id === selId) ?? null, [historial, selId]);
-  const ingList = useMemo(() => ingresos.filter(i => i.liquidacion_id === selId),        [ingresos,  selId]);
-  // compras already filtered server-side by selId — use directly
+  const histFromDb = useMemo(() => historial.find(h => h.liquidacion_id === selId) ?? null, [historial, selId]);
+  const hist: HistorialRow | null = contratoData
+    ? {
+        liquidacion_id: contratoData.liquidacion_id,
+        reserva_id: 0,
+        fecha: contratoData.created_at?.split('T')[0] ?? '',
+        propiedad: contratoData.propiedad,
+        propietario: contratoData.propietario,
+        huesped: contratoData.huesped,
+        numero_reserva: contratoData.numero_reserva,
+        recibido_neto_banco: contratoData.recibido_banco,
+      }
+    : histFromDb;
+  const ingList = useMemo(() => ingresos.filter(i => i.liquidacion_id === selId), [ingresos, selId]);
   const cmpList = compras;
   const com     = useMemo(() => comisiones.find(c => c.liquidacion_id === selId) ?? null, [comisiones, selId]);
 
-  const ingresoReserva      = ingList.reduce((s, r) => s + (r.subtotal ?? 0), 0);
-  const mayorIngreso        = ingList.reduce((s, r) => s + (r.impuesto_cargo ?? 0), 0);
-  const menosComisionAirbnb = cmpList.reduce((s, r) => s + (r.valor_bruto ?? 0), 0);
-  const otrosCobros         = cmpList.reduce((s, r) => s + (r.otros_impuestos ?? 0), 0);
-  const recibidoBanco       = hist?.recibido_neto_banco ?? 0;
-  const menosComision       = com?.comision ?? 0;
-  const menosIvaComision    = com?.iva_comision_19 ?? 0;
-  const retencionFuente     = com?.retencion_fuente ?? 0;
+  const ingresoReserva      = contratoData?.ingreso_reserva ?? ingList.reduce((s, r) => s + (r.subtotal ?? 0), 0);
+  const mayorIngreso        = contratoData?.mayor_ingreso ?? ingList.reduce((s, r) => s + (r.impuesto_cargo ?? 0), 0);
+  const menosComisionAirbnb = contratoData?.menos_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.valor_bruto ?? 0), 0);
+  const otrosCobros         = contratoData?.otros_cobros ?? cmpList.reduce((s, r) => s + (r.otros_impuestos ?? 0), 0);
+  const recibidoBanco       = contratoData?.recibido_banco ?? (hist?.recibido_neto_banco ?? 0);
+  const menosComision       = contratoData?.menos_comision ?? (com?.comision ?? 0);
+  const menosIvaComision    = contratoData?.menos_iva_comision ?? (com?.iva_comision_19 ?? 0);
+  const retencionFuente     = contratoData?.retencion_fuente ?? (com?.retencion_fuente ?? 0);
 
-  const total          = ingresoReserva + mayorIngreso - menosComisionAirbnb - otrosCobros;
-  const diferencia     = total - recibidoBanco;
-  const totalAEntregar = recibidoBanco - menosComision - menosIvaComision - retencionFuente;
+  const total          = contratoData?.total ?? (ingresoReserva + mayorIngreso - menosComisionAirbnb - otrosCobros);
+  const diferencia     = contratoData?.diferencia ?? (total - recibidoBanco);
+  const totalAEntregar = contratoData?.total_a_entregar ?? (recibidoBanco - menosComision - menosIvaComision - retencionFuente);
 
   const liqConDatos = useMemo(() => {
     const ids = new Set(ingresos.filter(i => i.liquidacion_id).map(i => i.liquidacion_id!));
@@ -154,7 +188,7 @@ export default function LiquidacionContrato({
 
   const navTabs = (
     <nav className="main-nav" aria-label="Módulos">
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
         {[
           { label: 'Liquidación Reserva', sub: 'Flujo completo Airbnb.',         view: 'form' },
           { label: 'Historial',           sub: 'Ver liquidaciones guardadas.',     view: 'historial' },
@@ -164,12 +198,21 @@ export default function LiquidacionContrato({
         ].map(t => (
           <button key={t.view} type="button"
             className={`nav-tab nav-tab-single ${t.view === 'contrato' ? 'is-active' : ''}`}
-            style={{ flex: '1 1 110px' }}
+            style={{ flex: '1 1 120px' }}
             onClick={t.view !== 'contrato' ? () => onNavigate(t.view) : undefined}>
             <span className="nav-tab-title">{t.label}</span>
             <span className="nav-tab-text">{t.sub}</span>
           </button>
         ))}
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <button key="historial-contratos" type="button"
+          className="nav-tab nav-tab-single"
+          style={{ flex: '1 1 100%' }}
+          onClick={() => onNavigate('historial-contratos')}>
+          <span className="nav-tab-title">Historial Contratos</span>
+          <span className="nav-tab-text">Ver contratos guardados.</span>
+        </button>
       </div>
     </nav>
   );
@@ -179,7 +222,7 @@ export default function LiquidacionContrato({
       <div className="app-shell">
 
         {/* HERO */}
-        <header className="hero-panel">
+        <header className="hero-panel" style={{ minHeight: '340px' }}>
           <div className="hero-orb hero-orb-left"  style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.22), transparent 65%)' }} />
           <div className="hero-orb hero-orb-right" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.18), transparent 65%)' }} />
           <div className="hero-content">
@@ -194,8 +237,8 @@ export default function LiquidacionContrato({
           </div>
         </header>
 
-        {/* Selector manual (solo cuando no viene del flujo automático) */}
-        {!liquidacionId && (
+        {/* Selector manual (solo cuando no viene del flujo automático ni de contrato guardado) */}
+        {!liquidacionId && !contratoData && (
           <div className="content-card">
             <div style={{ marginBottom: '0.75rem' }}>
               <span className="card-eyebrow">Selección</span>
@@ -217,7 +260,7 @@ export default function LiquidacionContrato({
 
         {loading ? (
           <div className="content-card" style={{ textAlign: 'center', color: '#64748b', padding: '3rem' }}>Cargando…</div>
-        ) : !selId || !hist ? (
+        ) : (!hist) ? (
           <div className="content-card" style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem' }}>
             {liquidacionId
               ? 'No se encontraron datos para esta liquidación.'
@@ -225,23 +268,6 @@ export default function LiquidacionContrato({
           </div>
         ) : (
           <div className="content-card">
-
-            {/* ── ESTADO COMPRAS ── */}
-            {cmpList.length === 0 ? (
-              <div style={{ marginBottom: '1rem', padding: '0.875rem 1.25rem', borderRadius: '0.75rem', background: '#fef9c3', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#92400e' }}>
-                  ⚠ No hay compras registradas para esta liquidación. Los campos "Menos Comisión Airbnb Mandante" y "Otros Cobros Plataforma" mostrarán 0,00.
-                </span>
-                <button type="button" onClick={() => onNavigate('propietario')}
-                  style={{ padding: '0.4rem 0.875rem', borderRadius: '0.5rem', border: '1px solid #fcd34d', background: '#fff', color: '#92400e', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                  Ir a Liq. Propietario →
-                </button>
-              </div>
-            ) : (
-              <div style={{ marginBottom: '1rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>
-                ✓ {cmpList.length} compra{cmpList.length !== 1 ? 's' : ''} encontrada{cmpList.length !== 1 ? 's' : ''} — Valor bruto total: {fmt(menosComisionAirbnb)} · Otros impuestos total: {fmt(otrosCobros)}
-              </div>
-            )}
 
             {/* ── DOCUMENTO ── */}
             <div style={{ maxWidth: '680px', margin: '0 auto', border: '1px solid #e2e8f0', borderRadius: '0.875rem', overflow: 'hidden', background: '#fff' }}>
@@ -312,7 +338,11 @@ export default function LiquidacionContrato({
 
             {/* ── ACCIONES ── */}
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {!saved ? (
+              {contratoData ? (
+                <button type="button" className="btn btn-secondary" onClick={() => onNavigate('historial-contratos')}>
+                  ← Volver al historial
+                </button>
+              ) : !saved ? (
                 <button type="button" className="btn btn-primary" disabled={saving} onClick={handleSave}>
                   {saving ? 'Guardando…' : 'Guardar liquidación contrato'}
                 </button>

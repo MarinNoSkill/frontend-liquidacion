@@ -22,9 +22,6 @@ type HistorialRecord = {
   otros_cobros: number | null;
 };
 
-const fmt = (v: number | null) =>
-  formatCurrency(v, currency);
-
 const fmtDate = (d: string) => {
   if (!d) return '—';
   const [y, m, day] = d.split('-');
@@ -42,6 +39,8 @@ function TrashIcon() {
 }
 
 export default function Historial({ onNavigate, currency = 'COP' }: { onNavigate: (view: string) => void; currency?: Currency }) {
+  const fmt = (v: number | null) =>
+    formatCurrency(v, currency);
   const [records, setRecords] = useState<HistorialRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -103,7 +102,7 @@ export default function Historial({ onNavigate, currency = 'COP' }: { onNavigate
       <div className="app-shell">
 
         {/* ── HERO ── */}
-        <header className="hero-panel">
+        <header className="hero-panel" style={{ minHeight: '340px' }}>
           <div className="hero-orb hero-orb-left" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.25), transparent 65%)' }} />
           <div className="hero-orb hero-orb-right" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.20), transparent 65%)' }} />
           <div className="hero-content">
@@ -120,26 +119,32 @@ export default function Historial({ onNavigate, currency = 'COP' }: { onNavigate
               <p>Consulta, filtra y elimina liquidaciones guardadas en la base de datos.</p>
             </div>
             <nav className="main-nav" aria-label="Módulos">
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('form')}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('form')}>
                   <span className="nav-tab-title">Liquidación Reserva</span>
                   <span className="nav-tab-text">Flujo completo de liquidación Airbnb.</span>
                 </button>
-                <button type="button" className="nav-tab is-active nav-tab-single" style={{ flex: '1 1 130px' }}>
+                <button type="button" className="nav-tab is-active nav-tab-single" style={{ flex: '1 1 120px' }}>
                   <span className="nav-tab-title">Historial</span>
                   <span className="nav-tab-text">Ver todas las liquidaciones guardadas.</span>
                 </button>
-                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('comision')}>
+                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('comision')}>
                   <span className="nav-tab-title">Comisión Zectorem</span>
                   <span className="nav-tab-text">Liquidación de comisiones Zectorem.</span>
                 </button>
-                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('propietario')}>
+                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('propietario')}>
                   <span className="nav-tab-title">Liq. Propietario</span>
                   <span className="nav-tab-text">Ingresos y compras del mandante.</span>
                 </button>
-                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 130px' }} onClick={() => onNavigate('contrato')}>
+                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 120px' }} onClick={() => onNavigate('contrato')}>
                   <span className="nav-tab-title">Liq. Contrato</span>
                   <span className="nav-tab-text">Liquidación contrato mandante.</span>
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button type="button" className="nav-tab nav-tab-single" style={{ flex: '1 1 100%' }} onClick={() => onNavigate('historial-contratos')}>
+                  <span className="nav-tab-title">Historial Contratos</span>
+                  <span className="nav-tab-text">Ver contratos guardados.</span>
                 </button>
               </div>
             </nav>
