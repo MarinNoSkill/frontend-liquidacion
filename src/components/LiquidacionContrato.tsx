@@ -13,6 +13,7 @@ type HistorialRow = {
   huesped:           string;
   numero_reserva:    string | null;
   impuesto_uso:      number | null;
+  total_gastos:      number | null;
   recibido_neto_banco: number | null;
 };
 type IngresoRow  = { liquidacion_id: number | null; subtotal: number | null; impuesto_cargo: number | null; };
@@ -113,14 +114,14 @@ export default function LiquidacionContrato({
         huesped: contratoData.huesped,
         numero_reserva: contratoData.numero_reserva,
         impuesto_uso: contratoData.mayor_ingreso,
+        total_gastos: contratoData.ingreso_reserva,
         recibido_neto_banco: contratoData.recibido_banco,
       }
     : histFromDb;
-  const ingList = useMemo(() => ingresos.filter(i => i.liquidacion_id === selId), [ingresos, selId]);
   const cmpList = compras;
   const com     = useMemo(() => comisiones.find(c => c.liquidacion_id === selId) ?? null, [comisiones, selId]);
 
-  const ingresoReserva      = contratoData?.ingreso_reserva ?? ingList.reduce((s, r) => s + (r.subtotal ?? 0), 0);
+  const ingresoReserva      = contratoData?.ingreso_reserva ?? (hist?.total_gastos ?? 0);
   const mayorIngreso        = contratoData?.mayor_ingreso ?? (hist?.impuesto_uso ?? 0);
   const menosComisionAirbnb = contratoData?.menos_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.valor_bruto ?? 0), 0);
   const ivaComisionAirbnb   = contratoData?.iva_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.iva ?? 0), 0);
