@@ -459,7 +459,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     }
     const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
     const impuestoUsoPropiedad = totalGastos * (pct / 100);
-    const totalLiquidado = totalGastos - tarifaServicios + impuestoUsoPropiedad;
+    const totalLiquidado = totalGastos - totalComisionIVA + impuestoUsoPropiedad;
     const confirmacionTotal = totalGastos + impuestoUsoPropiedad;
     setForm((prev) => ({
       ...prev,
@@ -548,7 +548,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     }
     const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
     const impuestoUsoPropiedad = totalGastos * (pct / 100);
-    const totalLiquidado = totalGastos - tarifaServicios + impuestoUsoPropiedad;
+    const totalLiquidado = totalGastos - totalComisionIVA + impuestoUsoPropiedad;
     const confirmacionTotal = totalGastos + impuestoUsoPropiedad;
     setForm((prev) => ({
       ...prev,
