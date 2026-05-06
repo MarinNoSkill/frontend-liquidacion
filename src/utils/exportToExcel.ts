@@ -505,6 +505,8 @@ type HistComContrato = {
   huesped: string | null;
   numero_reserva: string | null;
   responsable_iva: boolean | null;
+  no_comprobante: string | null;
+  identificacion: string | null;
   confirmacion_total: number | null;
   base_comision: number | null;
   comision: number | null;
@@ -610,7 +612,8 @@ export const exportAllHistorialToExcel = async () => {
       title: '2. COMISIÓN ZECTOREM',
       headers: [
         '#', 'Contrato', 'Fecha', 'Propiedad', 'Propietario', 'Huésped',
-        'Reserva N°', 'IVA Resp.', 'Confirm. Total',
+        'Reserva N°', 'IVA Resp.', 'N° Comprobante', 'Identificación',
+        'Confirm. Total',
         'Base Comisión', 'Comisión', 'IVA Com. 19%',
         'Retención %', 'Retención', 'Total Comisión',
       ],
@@ -623,6 +626,8 @@ export const exportAllHistorialToExcel = async () => {
         r.huesped ?? '',
         r.numero_reserva ?? '',
         r.responsable_iva ? 'Sí' : 'No',
+        r.no_comprobante ?? '',
+        r.identificacion ?? '',
         r.confirmacion_total ?? 0,
         r.base_comision ?? 0,
         r.comision ?? 0,
@@ -631,7 +636,7 @@ export const exportAllHistorialToExcel = async () => {
         r.retencion_fuente ?? 0,
         r.total_comision ?? 0,
       ]),
-      currencyCols: [8, 9, 10, 11, 13, 14],
+      currencyCols: [10, 11, 12, 13, 15, 16],
     },
     {
       title: '3. LIQUIDACIÓN PROPIETARIO — Ingresos',

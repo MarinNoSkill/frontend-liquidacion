@@ -14,6 +14,8 @@ type ComisionRecord = {
   confirmacion_total: number | null;
   total_liquidado: number | null;
   comision_id: number | null;
+  no_comprobante: string | null;
+  identificacion: string | null;
   base_comision: number | null;
   comision: number | null;
   iva_comision_19: number | null;
@@ -39,6 +41,8 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
   const [filterMode, setFilterMode] = useState<'todas' | 'pendientes' | 'comisionadas'>('todas');
   const [selected, setSelected]   = useState<ComisionRecord | null>(null);
   const [pctInput, setPctInput]   = useState('');
+  const [noComprobante, setNoComprobante] = useState('');
+  const [identificacion, setIdentificacion] = useState('');
   const [saving, setSaving]       = useState(false);
   const [saveMsg, setSaveMsg]     = useState('');
   const [search, setSearch]       = useState('');
@@ -69,6 +73,8 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
   const openForm = (record: ComisionRecord) => {
     setSelected(record);
     setPctInput('');
+    setNoComprobante(record.no_comprobante ?? '');
+    setIdentificacion(record.identificacion ?? '');
     setSaveMsg('');
     setView('form');
   };
@@ -97,6 +103,8 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           liquidacionId:       selected.liquidacion_id,
+          noComprobante:       noComprobante.trim() || null,
+          identificacion:      identificacion.trim() || null,
           baseComision,
           comision,
           ivaComision19,
@@ -113,6 +121,8 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
                 ...rec,
                 estado:              'listo',
                 comision_id:         -1,
+                no_comprobante:      noComprobante.trim() || null,
+                identificacion:      identificacion.trim() || null,
                 base_comision:       baseComision,
                 comision:            comision,
                 iva_comision_19:     ivaComision19,
@@ -238,6 +248,30 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px' }}>
+
+              {/* DATOS DE LA COMISIÓN — usuario */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.875rem', padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label className="field-label" style={{ display: 'block', marginBottom: '0.375rem' }}>N° Comprobante</label>
+                  <input
+                    type="text"
+                    value={noComprobante}
+                    onChange={e => setNoComprobante(e.target.value)}
+                    placeholder="Ej. 1234"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="field-label" style={{ display: 'block', marginBottom: '0.375rem' }}>Identificación (N° Doc.)</label>
+                  <input
+                    type="text"
+                    value={identificacion}
+                    onChange={e => setIdentificacion(e.target.value)}
+                    placeholder="N° de documento"
+                    className="input"
+                  />
+                </div>
+              </div>
 
               {/* BASE COMISION EXTRANJERO */}
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.875rem', padding: '1rem 1.25rem' }}>
@@ -432,6 +466,8 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
                     <th>Estado</th>
                     {filterMode === 'comisionadas' && (
                       <>
+                        <th>N° Comprobante</th>
+                        <th>Identificación</th>
                         <th>Base Comisión</th>
                         <th>Comisión</th>
                         <th>IVA Com. 19%</th>
@@ -475,6 +511,8 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
                       </td>
                       {filterMode === 'comisionadas' && (
                         <>
+                          <td style={{ color: '#475569' }}>{r.no_comprobante || '—'}</td>
+                          <td style={{ color: '#475569' }}>{r.identificacion || '—'}</td>
                           <td>{fmt(r.base_comision)}</td>
                           <td style={{ fontWeight: 700, color: '#1d4ed8', whiteSpace: 'nowrap' }}>{fmt(r.comision)}</td>
                           <td style={{ color: '#7c3aed', whiteSpace: 'nowrap' }}>{fmt(r.iva_comision_19)}</td>

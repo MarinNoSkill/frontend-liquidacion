@@ -343,7 +343,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
           confirmacionTotal:    num(d.confirmacion_total),
           comisionConIVA:       Boolean(d.comision_con_iva),
           recibidoNeto:         num(d.recibido_neto_banco),
-          menosComisionAnfitriones: num(d.tarifa_servicios),
+          menosComisionAnfitriones: num(d.menos_comision_anfitriones ?? d.total_comision_iva ?? d.tarifa_servicios),
           otrosCobros:          num(d.otros_cobros),
           numeroDocumento:      String(d.numero_documento ?? ''),
         });
@@ -474,15 +474,15 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
-    const tarifaServicios = parseFloat(form.tarifaServicios) || 0;
+    const totalComisionIVA = parseFloat(form.totalComisionIVA) || 0;
     const totalLiquidado  = parseFloat(form.totalLiquidado)  || 0;
     const recibidoNeto    = parseFloat(form.recibidoNeto)    || 0;
     setForm((prev) => ({
       ...prev,
-      menosComisionAnfitriones: tarifaServicios ? tarifaServicios.toFixed(2) : '',
+      menosComisionAnfitriones: totalComisionIVA ? totalComisionIVA.toFixed(2) : '',
       otrosCobros: form.recibidoNeto ? (totalLiquidado - recibidoNeto).toFixed(2) : '',
     }));
-  }, [form.recibidoNeto, form.totalLiquidado, form.tarifaServicios]);
+  }, [form.recibidoNeto, form.totalLiquidado, form.totalComisionIVA]);
 
   const resetToNew = () => {
     setForm(initialState);
@@ -1017,7 +1017,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                       <input {...numericInput('recibidoNeto')} />
                     </FieldShell>
 
-                    <FieldShell label="Comisión anfitriones (15,5%)" icon={ReceiptIcon} hint="Tarifa de servicios de la plataforma (se toma de paso 4).">
+                    <FieldShell label="Comisión anfitriones (15,5%)" icon={ReceiptIcon} hint="Total comisión con IVA (se toma de paso 4).">
                       <input
                         name="menosComisionAnfitriones"
                         value={form.menosComisionAnfitriones ? formatCurrency(form.menosComisionAnfitriones) : ''}
