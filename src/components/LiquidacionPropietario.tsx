@@ -162,13 +162,17 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
   const updateCmpItem = (idx: number, field: string, val: string | boolean) =>
     setCmpItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: val } : it));
 
-  // Pre-fill item 0 when the selected liquidacion changes
+  // Pre-fill item 0 when the selected liquidacion changes.
+  // Valor bruto = Total comisión IVA / 1.19 (base sin IVA).
   useEffect(() => {
     if (!cmpLiqId) return;
     const sel = cmpSelFor(cmpLiqId);
     if (!sel) return;
+    const baseSinIva = sel.total_comision_iva != null
+      ? (sel.total_comision_iva / 1.19).toFixed(2)
+      : '';
     setCmpItems(prev => prev.map((it, i) =>
-      i === 0 ? { ...it, valorBruto: String(sel.total_comision_iva ?? ''), otrosImp: String(sel.otros_cobros ?? '') } : it
+      i === 0 ? { ...it, valorBruto: baseSinIva, otrosImp: String(sel.otros_cobros ?? '') } : it
     ));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmpLiqId]);
@@ -623,7 +627,7 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
                               {fieldWrap('Ítem / Descripción',
                                 <input type="text" value={item.itemText} onChange={e => updateCmpItem(idx, 'itemText', e.target.value)} placeholder="Descripción del ítem" style={inputStyle} />
                               )}
-                              {fieldWrap(isFirst ? 'Valor bruto (Total comisión IVA — editable)' : 'Valor bruto',
+                              {fieldWrap(isFirst ? 'Valor bruto (Base = Total comisión IVA ÷ 1.19 — editable)' : 'Valor bruto',
                                 <input type="number" value={item.valorBruto} onChange={e => updateCmpItem(idx, 'valorBruto', e.target.value)} placeholder="0.00" style={inputStyle} />
                               )}
                               {fieldWrap('IVA (19% sobre valor bruto)',

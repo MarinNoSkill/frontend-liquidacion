@@ -12,6 +12,7 @@ type HistorialRow = {
   propietario:       string;
   huesped:           string;
   numero_reserva:    string | null;
+  impuesto_uso:      number | null;
   recibido_neto_banco: number | null;
 };
 type IngresoRow  = { liquidacion_id: number | null; subtotal: number | null; impuesto_cargo: number | null; };
@@ -110,6 +111,7 @@ export default function LiquidacionContrato({
         propietario: contratoData.propietario,
         huesped: contratoData.huesped,
         numero_reserva: contratoData.numero_reserva,
+        impuesto_uso: contratoData.mayor_ingreso,
         recibido_neto_banco: contratoData.recibido_banco,
       }
     : histFromDb;
@@ -118,7 +120,7 @@ export default function LiquidacionContrato({
   const com     = useMemo(() => comisiones.find(c => c.liquidacion_id === selId) ?? null, [comisiones, selId]);
 
   const ingresoReserva      = contratoData?.ingreso_reserva ?? ingList.reduce((s, r) => s + (r.subtotal ?? 0), 0);
-  const mayorIngreso        = contratoData?.mayor_ingreso ?? ingList.reduce((s, r) => s + (r.impuesto_cargo ?? 0), 0);
+  const mayorIngreso        = contratoData?.mayor_ingreso ?? (hist?.impuesto_uso ?? 0);
   const menosComisionAirbnb = contratoData?.menos_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.valor_bruto ?? 0), 0);
   const otrosCobros         = contratoData?.otros_cobros ?? cmpList.reduce((s, r) => s + (r.otros_impuestos ?? 0), 0);
   const recibidoBanco       = contratoData?.recibido_banco ?? (hist?.recibido_neto_banco ?? 0);
@@ -322,20 +324,20 @@ export default function LiquidacionContrato({
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   <Row label="Ingreso Reserva"                    sign="$"  value={ingresoReserva} />
-                  <Row label="Mayor Ingreso Reserva - Extr"       sign=""   value={mayorIngreso} />
+                  <Row label="Mayor Ingreso Reserva - Extr"       sign="$"  value={mayorIngreso} />
                   {/* Always show numeric value (even 0) so user sees the actual sum from compras */}
                   <tr style={{ borderTop: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>Menos Comisión Airbnb Mandante</td>
-                    <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>-$</td>
+                    <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>$</td>
                     <td style={{ padding: '0.5rem 1.25rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', color: '#0f172a' }}>
                       {menosComisionAirbnb !== 0 ? `-${fmt(menosComisionAirbnb)}` : fmt(0)}
                     </td>
                   </tr>
                   <tr style={{ borderTop: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>Otros Cobros Plataforma</td>
-                    <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>-</td>
+                    <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>$</td>
                     <td style={{ padding: '0.5rem 1.25rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', color: '#0f172a' }}>
-                      {otrosCobros !== 0 ? `-${fmt(otrosCobros)}` : fmt(0)}
+                      {otrosCobros !== 0 ? `-${fmt(Math.abs(otrosCobros))}` : fmt(0)}
                     </td>
                   </tr>
 
@@ -349,8 +351,8 @@ export default function LiquidacionContrato({
                     </td>
                   </tr>
 
-                  <Row label="Recibido Banco"  sign="" value={recibidoBanco} />
-                  <Row label="Diferencia"      sign="" value={diferencia} />
+                  <Row label="Recibido Banco"  sign="$" value={recibidoBanco} />
+                  <Row label="Diferencia"      sign="$" value={diferencia} />
 
                   {/* Separador */}
                   <tr><td colSpan={3} style={{ height: '1px', background: '#f1f5f9', padding: 0 }} /></tr>
