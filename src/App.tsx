@@ -18,6 +18,7 @@ type ContratoRecord = {
   ingreso_reserva: number | null;
   mayor_ingreso: number | null;
   menos_comision_airbnb: number | null;
+  iva_comision_airbnb: number | null;
   otros_cobros: number | null;
   total: number | null;
   recibido_banco: number | null;
@@ -33,6 +34,7 @@ function App() {
   const [view, setView] = useState<View>('form');
   const [contratoLiqId, setContratoLiqId] = useState<number | null>(null);
   const [contratoData, setContratoData] = useState<ContratoRecord | null>(null);
+  const [editLiqId, setEditLiqId] = useState<number | null>(null);
   const [currency, setCurrencyState] = useState<Currency>('COP');
 
   useEffect(() => {
@@ -48,12 +50,19 @@ function App() {
     if (v.startsWith('contrato:')) {
       setContratoLiqId(Number(v.split(':')[1]) || null);
       setContratoData(null);
+      setEditLiqId(null);
       setView('contrato');
     } else if (v.startsWith('contrato-ver:')) {
       setView('contrato');
+    } else if (v.startsWith('form:edit:')) {
+      setEditLiqId(Number(v.split(':')[2]) || null);
+      setContratoLiqId(null);
+      setContratoData(null);
+      setView('form');
     } else {
       setContratoLiqId(null);
       setContratoData(null);
+      setEditLiqId(null);
       setView(v as View);
     }
   };
@@ -96,7 +105,7 @@ function App() {
       {view === 'comision' && <LiquidacionComisionZectorem onNavigate={navigate} currency={currency} />}
       {view === 'propietario' && <LiquidacionPropietario onNavigate={navigate} currency={currency} />}
       {view === 'contrato' && <LiquidacionContrato onNavigate={navigate} liquidacionId={contratoLiqId} contratoData={contratoData} currency={currency} />}
-      {view === 'form' && <LiquidacionAirbnb onNavigate={navigate} currency={currency} />}
+      {view === 'form' && <LiquidacionAirbnb onNavigate={navigate} currency={currency} editLiquidacionId={editLiqId} />}
     </>
   );
 

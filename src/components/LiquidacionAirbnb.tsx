@@ -238,6 +238,7 @@ const initialState = {
   reservaInicial: '',
   tarifaLimpieza: '',
   totalIngresoReserva: '',
+  impuestoUsoPct: '19',
   impuestoUso: '',
   huespedPago: '',
   tarifaHabitacion: '',
@@ -283,15 +284,79 @@ const progressSteps = [
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view: string) => void; currency?: Currency }) {
+function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = null }: { onNavigate: (view: string) => void; currency?: Currency; editLiquidacionId?: number | null }) {
   const [form, setForm] = useState(initialState);
   const [step, setStep] = useState(1);
+  const [editLoading, setEditLoading] = useState(false);
+  const isEditing = editLiquidacionId != null;
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveMsg, setSaveMsg] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const progress = useMemo(() => Math.min(100, Math.max(0, ((step - 1) / 5) * 100)), [step]);
+
+  React.useEffect(() => {
+    if (editLiquidacionId == null) return;
+    let cancelled = false;
+    setEditLoading(true);
+    fetch(`${API_URL}/liquidacion/${editLiquidacionId}`)
+      .then(r => r.json() as Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }>)
+      .then(json => {
+        if (cancelled) return;
+        if (!json.success || !json.data) {
+          setSaveStatus('error');
+          setSaveMsg(json.error ?? 'No se pudo cargar la liquidación.');
+          return;
+        }
+        const d = json.data;
+        const num = (v: unknown) => v == null ? '' : String(v);
+        const totalIngreso = parseFloat(num(d.total_ingreso_reserva)) || 0;
+        const impuesto     = parseFloat(num(d.impuesto_uso)) || 0;
+        const pct = totalIngreso > 0 ? (impuesto / totalIngreso) * 100 : 19;
+        const pctRounded = Math.abs(pct - 19) < 0.01 ? '19' : (pct === 0 ? '0' : String(parseFloat(pct.toFixed(4))));
+        setForm({
+          documentoPropietario: String(d.propietario_doc ?? ''),
+          nombrePropiedad:      String(d.propiedad ?? ''),
+          nombrePropietario:    String(d.propietario ?? ''),
+          responsableIVA:       Boolean(d.responsable_iva),
+          nombreHuesped:        String(d.huesped ?? ''),
+          nacionalidad:         String(d.nacionalidad ?? ''),
+          tipoDocumento:        String(d.tipo_documento ?? ''),
+          extranjero:           Boolean(d.extranjero),
+          residente:            Boolean(d.residente),
+          numeroReserva:        String(d.numero_reserva ?? ''),
+          reservaInicial:       num(d.reserva_inicial),
+          tarifaLimpieza:       num(d.tarifa_limpieza),
+          totalIngresoReserva:  num(d.total_ingreso_reserva),
+          impuestoUsoPct:       pctRounded,
+          impuestoUso:          num(d.impuesto_uso),
+          huespedPago:          num(d.huesped_pago),
+          tarifaHabitacion:     num(d.tarifa_habitacion),
+          ajustePrecioNoche:    num(d.ajuste_precio_noche),
+          totalGastos:          num(d.total_gastos),
+          tarifaServicios:      num(d.tarifa_servicios),
+          ivaComision:          num(d.iva_comision),
+          totalComisionIVA:     num(d.total_comision_iva),
+          impuestoUsoPropiedad: num(d.impuesto_uso_propiedad),
+          totalLiquidado:       num(d.total_liquidado),
+          confirmacionTotal:    num(d.confirmacion_total),
+          comisionConIVA:       Boolean(d.comision_con_iva),
+          recibidoNeto:         num(d.recibido_neto_banco),
+          menosComisionAnfitriones: num(d.tarifa_servicios),
+          otrosCobros:          num(d.otros_cobros),
+          numeroDocumento:      String(d.numero_documento ?? ''),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSaveStatus('error');
+          setSaveMsg('No se pudo conectar al backend para cargar la liquidación.');
+        }
+      })
+      .finally(() => { if (!cancelled) setEditLoading(false); });
+    return () => { cancelled = true; };
+  }, [editLiquidacionId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, type } = e.target;
@@ -355,7 +420,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
       const reservaInicial = parseFloat(form.reservaInicial) || 0;
       const tarifaLimpieza = parseFloat(form.tarifaLimpieza) || 0;
       const totalIngresoReserva = reservaInicial + tarifaLimpieza;
-      const impuestoUso = totalIngresoReserva * 0.19;
+      const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
+      const impuestoUso = totalIngresoReserva * (pct / 100);
       const huespedPago = totalIngresoReserva + impuestoUso;
       setForm((prev) => ({
         ...prev,
@@ -364,7 +430,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
         huespedPago: huespedPago.toFixed(2),
       }));
     }
-  }, [form.reservaInicial, form.tarifaLimpieza]);
+  }, [form.reservaInicial, form.tarifaLimpieza, form.impuestoUsoPct]);
 
   // Step 3 calculations
   React.useEffect(() => {
@@ -505,15 +571,17 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
     setSaveStatus('saving');
     setSaveMsg('');
     try {
-      const res = await fetch(`${API_URL}/save`, {
-        method: 'POST',
+      const url    = isEditing ? `${API_URL}/liquidacion/${editLiquidacionId}` : `${API_URL}/save`;
+      const method = isEditing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       const json = await res.json() as { success: boolean; error?: string };
       if (json.success) {
         setSaveStatus('saved');
-        setSaveMsg('Liquidación guardada en Supabase correctamente.');
+        setSaveMsg(isEditing ? 'Liquidación actualizada correctamente.' : 'Liquidación guardada en Supabase correctamente.');
       } else {
         setSaveStatus('error');
         setSaveMsg(json.error ?? 'Error al guardar. Revisa la configuración de Supabase.');
@@ -634,10 +702,13 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
               <div className="module-header">
                 <div>
                   <span className="card-eyebrow">Liquidación de reservas</span>
-                  <h2>Flujo de liquidación Airbnb</h2>
-                  <p>Completa los 6 pasos para generar y exportar la liquidación.</p>
+                  <h2>{isEditing ? `Editar liquidación #${editLiquidacionId}` : 'Flujo de liquidación Airbnb'}</h2>
+                  <p>{isEditing ? 'Modifica los datos y guarda para actualizar el registro.' : 'Completa los 6 pasos para generar y exportar la liquidación.'}</p>
+                  {editLoading && (
+                    <p style={{ marginTop: '0.4rem', color: '#0284c7', fontWeight: 700, fontSize: '0.875rem' }}>Cargando datos…</p>
+                  )}
                 </div>
-                <div className="module-badge">Etapa {step} de 6</div>
+                <div className="module-badge">{isEditing ? 'Modo edición' : `Etapa ${step} de 6`}</div>
               </div>
 
               {/* Progress */}
@@ -794,8 +865,46 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
                     <FieldShell label="Total ingreso reserva" icon={SparkIcon} hint="Reserva inicial + tarifa limpieza (calculado).">
                       <input name="totalIngresoReserva" value={formatCurrency(form.totalIngresoReserva)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
-                    <FieldShell label="Impuesto de uso 19%" icon={MoneyIcon} hint="Calculado automáticamente sobre el total.">
-                      <input name="impuestoUso" value={formatCurrency(form.impuestoUso)} readOnly placeholder="0,00" className="input input-readonly" />
+                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint="Edita el porcentaje (deja en 0 si no aplica).">
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                        <select
+                          name="impuestoUsoPctPreset"
+                          value={['0','19'].includes(form.impuestoUsoPct) ? form.impuestoUsoPct : 'custom'}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === 'custom') {
+                              setForm(prev => ({ ...prev, impuestoUsoPct: prev.impuestoUsoPct && !['0','19'].includes(prev.impuestoUsoPct) ? prev.impuestoUsoPct : '' }));
+                            } else {
+                              setForm(prev => ({ ...prev, impuestoUsoPct: v }));
+                            }
+                          }}
+                          className="input"
+                          style={{ width: '7.5rem' }}
+                        >
+                          <option value="19">19%</option>
+                          <option value="0">No aplica</option>
+                          <option value="custom">Otro %</option>
+                        </select>
+                        {!['0','19'].includes(form.impuestoUsoPct) && (
+                          <input
+                            type="text"
+                            name="impuestoUsoPct"
+                            value={form.impuestoUsoPct}
+                            onChange={handleChange}
+                            placeholder="%"
+                            className="input"
+                            style={{ width: '5rem' }}
+                          />
+                        )}
+                        <input
+                          name="impuestoUso"
+                          value={formatCurrency(form.impuestoUso)}
+                          readOnly
+                          placeholder="0,00"
+                          className="input input-readonly"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
                     </FieldShell>
                     <FieldShell label="Huésped paga" icon={ReceiptIcon} hint="Total con impuesto de uso incluido.">
                       <input name="huespedPago" value={formatCurrency(form.huespedPago)} readOnly placeholder="0,00" className="input input-readonly" />
@@ -906,7 +1015,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
                       <input {...numericInput('recibidoNeto')} />
                     </FieldShell>
 
-                    <FieldShell label="Menos comisión anfitriones (15,5%)" icon={ReceiptIcon} hint="Tarifa de servicios de la plataforma (se toma de paso 4).">
+                    <FieldShell label="Comisión anfitriones (15,5%)" icon={ReceiptIcon} hint="Tarifa de servicios de la plataforma (se toma de paso 4).">
                       <input
                         name="menosComisionAnfitriones"
                         value={form.menosComisionAnfitriones ? formatCurrency(form.menosComisionAnfitriones) : ''}
@@ -1036,7 +1145,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP' }: { onNavigate: (view
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <button className="btn btn-primary" onClick={guardarLiquidacion} disabled={saveStatus === 'saving'}>
                         <SaveIcon className="h-4 w-4" />
-                        Guardar en Supabase
+                        {isEditing ? 'Guardar cambios' : 'Guardar en Supabase'}
                       </button>
                       <button className="btn btn-success" onClick={exportarExcel} disabled={saveStatus === 'saving'}>
                         Exportar a Excel

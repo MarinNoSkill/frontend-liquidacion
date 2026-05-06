@@ -16,7 +16,7 @@ type HistorialRow = {
   recibido_neto_banco: number | null;
 };
 type IngresoRow  = { liquidacion_id: number | null; subtotal: number | null; impuesto_cargo: number | null; };
-type CompraRow   = { liquidacion_id: number | null; valor_bruto: number | null; otros_impuestos: number | null; };
+type CompraRow   = { liquidacion_id: number | null; valor_bruto: number | null; iva: number | null; otros_impuestos: number | null; };
 type ComisionRow = { liquidacion_id: number; comision: number | null; iva_comision_19: number | null; retencion_fuente: number | null; };
 
 const fmtDate = (d: string) => {
@@ -35,6 +35,7 @@ type ContratoRecord = {
   ingreso_reserva: number | null;
   mayor_ingreso: number | null;
   menos_comision_airbnb: number | null;
+  iva_comision_airbnb: number | null;
   otros_cobros: number | null;
   total: number | null;
   recibido_banco: number | null;
@@ -122,13 +123,14 @@ export default function LiquidacionContrato({
   const ingresoReserva      = contratoData?.ingreso_reserva ?? ingList.reduce((s, r) => s + (r.subtotal ?? 0), 0);
   const mayorIngreso        = contratoData?.mayor_ingreso ?? (hist?.impuesto_uso ?? 0);
   const menosComisionAirbnb = contratoData?.menos_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.valor_bruto ?? 0), 0);
+  const ivaComisionAirbnb   = contratoData?.iva_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.iva ?? 0), 0);
   const otrosCobros         = contratoData?.otros_cobros ?? cmpList.reduce((s, r) => s + (r.otros_impuestos ?? 0), 0);
   const recibidoBanco       = contratoData?.recibido_banco ?? (hist?.recibido_neto_banco ?? 0);
   const menosComision       = contratoData?.menos_comision ?? (com?.comision ?? 0);
   const menosIvaComision    = contratoData?.menos_iva_comision ?? (com?.iva_comision_19 ?? 0);
   const retencionFuente     = contratoData?.retencion_fuente ?? (com?.retencion_fuente ?? 0);
 
-  const total          = contratoData?.total ?? (ingresoReserva + mayorIngreso - menosComisionAirbnb - otrosCobros);
+  const total          = contratoData?.total ?? (ingresoReserva + mayorIngreso - menosComisionAirbnb - ivaComisionAirbnb - otrosCobros);
   const diferencia     = contratoData?.diferencia ?? (total - recibidoBanco);
   const totalAEntregar = contratoData?.total_a_entregar ?? (recibidoBanco - menosComision - menosIvaComision - retencionFuente);
 
@@ -146,7 +148,7 @@ export default function LiquidacionContrato({
         body: JSON.stringify({
           propietario: hist.propietario, propiedad: hist.propiedad,
           huesped: hist.huesped, numeroReserva: hist.numero_reserva,
-          ingresoReserva, mayorIngreso, menosComisionAirbnb, otrosCobros,
+          ingresoReserva, mayorIngreso, menosComisionAirbnb, ivaComisionAirbnb, otrosCobros,
           total, recibidoBanco, diferencia, menosComision,
           menosIvaComision, retencionFuente, totalAEntregar,
         }),
@@ -175,6 +177,7 @@ export default function LiquidacionContrato({
         ingreso_reserva:       ingresoReserva,
         mayor_ingreso:         mayorIngreso,
         menos_comision_airbnb: menosComisionAirbnb,
+        iva_comision_airbnb:   ivaComisionAirbnb,
         otros_cobros:          otrosCobros,
         total,
         recibido_banco:        recibidoBanco,
@@ -324,13 +327,20 @@ export default function LiquidacionContrato({
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   <Row label="Ingreso Reserva"                    sign="$"  value={ingresoReserva} />
-                  <Row label="Mayor Ingreso Reserva - Extr"       sign="$"  value={mayorIngreso} />
+                  <Row label="Servicio exento de IVA art.481 (li) ET - Dec.297-2016"       sign="$"  value={mayorIngreso} />
                   {/* Always show numeric value (even 0) so user sees the actual sum from compras */}
                   <tr style={{ borderTop: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>Menos Comisión Airbnb Mandante</td>
+                    <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>Comisión Airbnb Mandante</td>
                     <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>$</td>
                     <td style={{ padding: '0.5rem 1.25rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', color: '#0f172a' }}>
                       {menosComisionAirbnb !== 0 ? `-${fmt(menosComisionAirbnb)}` : fmt(0)}
+                    </td>
+                  </tr>
+                  <tr style={{ borderTop: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>IVA Comisión Airbnb Mandante</td>
+                    <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>$</td>
+                    <td style={{ padding: '0.5rem 1.25rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', color: '#0f172a' }}>
+                      {ivaComisionAirbnb !== 0 ? `-${fmt(ivaComisionAirbnb)}` : fmt(0)}
                     </td>
                   </tr>
                   <tr style={{ borderTop: '1px solid #f1f5f9' }}>
@@ -357,8 +367,8 @@ export default function LiquidacionContrato({
                   {/* Separador */}
                   <tr><td colSpan={3} style={{ height: '1px', background: '#f1f5f9', padding: 0 }} /></tr>
 
-                  <Row label="Menos Comisión"                           sign="$" value={menosComision} />
-                  <Row label="Menos IVA Comisión"                       sign="$" value={menosIvaComision} />
+                  <Row label="Comisión"                                 sign="$" value={menosComision} />
+                  <Row label="IVA Comisión"                             sign="$" value={menosIvaComision} />
                   <Row label="Retención en la Fuente a Favor Zectorem"  sign="$" value={retencionFuente} />
 
                   {/* TOTAL A ENTREGAR */}

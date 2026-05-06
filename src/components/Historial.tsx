@@ -219,7 +219,7 @@ export default function Historial({ onNavigate, currency = 'COP' }: { onNavigate
                     <th>Confirmación total</th>
                     <th>Recibido neto</th>
                     <th>Otros cobros</th>
-                    <th></th>
+                    <th style={{ textAlign: 'center' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -241,7 +241,20 @@ export default function Historial({ onNavigate, currency = 'COP' }: { onNavigate
                       <td>{fmt(r.confirmacion_total)}</td>
                       <td style={{ fontWeight: 600, color: '#059669', whiteSpace: 'nowrap' }}>{fmt(r.recibido_neto_banco)}</td>
                       <td className={r.otros_cobros != null ? 'danger' : ''}>{fmt(r.otros_cobros)}</td>
-                      <td style={{ textAlign: 'center', padding: '0.5rem' }}>
+                      <td style={{ textAlign: 'center', padding: '0.5rem', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          title="Editar liquidación"
+                          onClick={() => onNavigate(`form:edit:${r.liquidacion_id}`)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '0.4rem 0.75rem', marginRight: '0.5rem', borderRadius: '0.5rem',
+                            border: '1px solid #bae6fd', backgroundColor: '#f0f9ff', color: '#0284c7',
+                            fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+                          }}
+                        >
+                          Editar
+                        </button>
                         <button
                           type="button"
                           title="Eliminar registro"

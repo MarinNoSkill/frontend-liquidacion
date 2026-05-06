@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Currency, formatCurrency } from '../utils/currency';
+import { exportAllHistorialToExcel } from '../utils/exportToExcel';
 
 const API_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:4000';
 
@@ -13,6 +14,7 @@ type ContratoRecord = {
   ingreso_reserva: number | null;
   mayor_ingreso: number | null;
   menos_comision_airbnb: number | null;
+  iva_comision_airbnb: number | null;
   otros_cobros: number | null;
   total: number | null;
   recibido_banco: number | null;
@@ -38,6 +40,8 @@ export default function HistorialContratos({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState('');
 
   useEffect(() => {
     fetch(`${API_URL}/contratos-propietario`)
@@ -69,6 +73,18 @@ export default function HistorialContratos({
       }
     } catch {
       alert('No se pudo conectar al backend');
+    }
+  };
+
+  const handleExportAll = async () => {
+    setExporting(true); setExportMsg('');
+    try {
+      await exportAllHistorialToExcel();
+      setExportMsg('Excel descargado correctamente.');
+    } catch (e) {
+      setExportMsg(`Error al exportar: ${e instanceof Error ? e.message : 'desconocido'}`);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -133,10 +149,31 @@ export default function HistorialContratos({
 
         {/* ── FILTROS ── */}
         <div className="content-card">
-          <div className="module-header" style={{ marginBottom: '1.25rem' }}>
+          <div className="module-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <span className="card-eyebrow">Búsqueda</span>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 900 }}>Filtrar contratos</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {exportMsg && (
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: exportMsg.startsWith('Error') ? '#dc2626' : '#059669' }}>
+                  {exportMsg}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleExportAll}
+                disabled={exporting || contratos.length === 0}
+                style={{
+                  padding: '0.625rem 1.25rem', borderRadius: '0.625rem',
+                  border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d',
+                  fontWeight: 700, fontSize: '0.875rem',
+                  cursor: exporting || contratos.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: exporting || contratos.length === 0 ? 0.6 : 1,
+                }}
+              >
+                {exporting ? 'Generando…' : 'Descargar Excel (todos)'}
+              </button>
             </div>
           </div>
           <div className="hist-filter-bar">
