@@ -709,107 +709,87 @@ export const exportAllHistorialToExcel = async () => {
     },
   ];
 
-  const maxCols = Math.max(...sections.map(s => s.headers.length));
+  // Layout horizontal: cada sección ocupa su propio bloque de columnas
+  // a la derecha del anterior, con una columna en blanco como separador.
+  const SEP = 1; // columnas en blanco entre secciones
+  const offsets: number[] = [];
+  let runningCol = 0;
+  sections.forEach((s, i) => {
+    offsets[i] = runningCol;
+    runningCol += s.headers.length + (i < sections.length - 1 ? SEP : 0);
+  });
+  const totalCols = runningCol;
+  const maxDataRows = Math.max(1, ...sections.map(s => s.rows.length));
 
-  // Construir AOA + tracking de tipos de fila
-  type RowKind = 'title' | 'header' | 'data' | 'spacer';
-  type RowMeta = { kind: RowKind; sectionIdx?: number; currencyCols?: number[] };
+  // Construir AOA: 1 fila de encabezados + maxDataRows filas de datos
   const aoa: (string | number | null)[][] = [];
-  const meta: RowMeta[] = [];
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
 
-  sections.forEach((sec, idx) => {
-    if (idx > 0) {
-      aoa.push(Array(maxCols).fill(''));
-      meta.push({ kind: 'spacer' });
-      aoa.push(Array(maxCols).fill(''));
-      meta.push({ kind: 'spacer' });
-    }
-    // Título
-    const titleRowIdx = aoa.length;
-    const titleRow: (string | null)[] = Array(maxCols).fill('');
-    titleRow[0] = sec.title;
-    aoa.push(titleRow);
-    meta.push({ kind: 'title', sectionIdx: idx });
-    merges.push({ s: { r: titleRowIdx, c: 0 }, e: { r: titleRowIdx, c: maxCols - 1 } });
+  const headerRow: (string | number | null)[] = Array(totalCols).fill('');
+  sections.forEach((sec, i) => {
+    sec.headers.forEach((h, c) => { headerRow[offsets[i] + c] = h; });
+  });
+  aoa.push(headerRow);
 
-    // Header
-    const headerRow: (string | null)[] = Array(maxCols).fill('');
-    sec.headers.forEach((h, i) => { headerRow[i] = h; });
-    aoa.push(headerRow);
-    meta.push({ kind: 'header', sectionIdx: idx });
+  for (let r = 0; r < maxDataRows; r++) {
+    const dataRow: (string | number | null)[] = Array(totalCols).fill('');
+    sections.forEach((sec, i) => {
+      const row = sec.rows[r];
+      if (!row) return;
+      row.forEach((v, c) => { dataRow[offsets[i] + c] = v as string | number | null; });
+    });
+    aoa.push(dataRow);
+  }
 
-    // Datos
-    if (sec.rows.length === 0) {
-      const emptyRow: (string | null)[] = Array(maxCols).fill('');
-      emptyRow[0] = '— sin registros —';
-      aoa.push(emptyRow);
-      meta.push({ kind: 'data', sectionIdx: idx, currencyCols: [] });
-    } else {
-      sec.rows.forEach((row) => {
-        const padded: (string | number | null)[] = Array(maxCols).fill('');
-        row.forEach((v, i) => { padded[i] = v as string | number | null; });
-        aoa.push(padded);
-        meta.push({ kind: 'data', sectionIdx: idx, currencyCols: sec.currencyCols });
-      });
+  // Mapa de columnas con formato moneda (offset por sección)
+  const currencyColSet = new Set<number>();
+  sections.forEach((sec, i) => {
+    sec.currencyCols.forEach(c => currencyColSet.add(offsets[i] + c));
+  });
+  // Marcar columnas separadoras
+  const separatorColSet = new Set<number>();
+  sections.forEach((_, i) => {
+    if (i < sections.length - 1) {
+      const sepStart = offsets[i] + sections[i].headers.length;
+      for (let k = 0; k < SEP; k++) separatorColSet.add(sepStart + k);
     }
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!merges'] = merges;
-
-  const TITLE_STYLE = {
-    font:      { bold: true, sz: 13, color: { rgb: 'FFFFFF' } },
-    fill:      { patternType: 'solid', fgColor: { rgb: '0F172A' } },
-    alignment: { horizontal: 'left', vertical: 'center', indent: 1 },
-    border:    THIN_BORDER,
-  };
 
   for (let r = 0; r < aoa.length; r++) {
-    const m = meta[r];
-    if (m.kind === 'spacer') continue;
-    for (let c = 0; c < maxCols; c++) {
+    for (let c = 0; c < totalCols; c++) {
+      if (separatorColSet.has(c)) continue;
       const addr = XLSX.utils.encode_cell({ r, c });
       if (!ws[addr]) ws[addr] = { v: '', t: 's' };
       const cell = ws[addr];
-      if (m.kind === 'title') {
-        cell.s = TITLE_STYLE;
-      } else if (m.kind === 'header') {
+      if (r === 0) {
         cell.s = HEADER_STYLE;
-      } else if (m.kind === 'data') {
-        const isCurrency = (m.currencyCols ?? []).includes(c) && typeof cell.v === 'number';
-        if (isCurrency) {
-          cell.t = 'n';
-          cell.z = CURRENCY_FMT;
-          cell.s = CURRENCY_STYLE;
-        } else {
-          cell.s = CELL_STYLE;
-        }
+      } else if (currencyColSet.has(c) && typeof cell.v === 'number') {
+        cell.t = 'n';
+        cell.z = CURRENCY_FMT;
+        cell.s = CURRENCY_STYLE;
+      } else {
+        cell.s = CELL_STYLE;
       }
     }
   }
 
-  // Ancho de columnas: maximo de cada columna a través de todas las secciones
-  const colWidths: number[] = Array(maxCols).fill(10);
-  for (let c = 0; c < maxCols; c++) {
+  // Anchos: por columna basado en su contenido; separadores estrechos
+  const colWidths: number[] = Array(totalCols).fill(10);
+  for (let c = 0; c < totalCols; c++) {
+    if (separatorColSet.has(c)) { colWidths[c] = 2; continue; }
     let max = 0;
     for (let r = 0; r < aoa.length; r++) {
       const v = aoa[r][c];
       const s = v == null ? '' : typeof v === 'number' ? v.toFixed(2) : String(v);
       if (s.length > max) max = s.length;
     }
-    colWidths[c] = Math.min(40, Math.max(10, max + 2));
+    colWidths[c] = Math.min(38, Math.max(10, max + 2));
   }
   ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
-  // Alturas: títulos un poco más altos
-  ws['!rows'] = meta.map(m => {
-    if (m.kind === 'title') return { hpt: 26 };
-    if (m.kind === 'header') return { hpt: 22 };
-    if (m.kind === 'spacer') return { hpt: 8 };
-    return { hpt: 18 };
-  });
-  ws['!freeze'] = { xSplit: 0, ySplit: 0 };
+  ws['!rows'] = aoa.map((_, r) => ({ hpt: r === 0 ? 24 : 18 }));
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Historial Contratos');

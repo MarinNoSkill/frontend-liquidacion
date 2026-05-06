@@ -457,7 +457,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       ivaComision = tarifaServicios * 0.19;
       totalComisionIVA += ivaComision;
     }
-    const impuestoUsoPropiedad = totalGastos * 0.19;
+    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
+    const impuestoUsoPropiedad = totalGastos * (pct / 100);
     const totalLiquidado = totalGastos - tarifaServicios + impuestoUsoPropiedad;
     const confirmacionTotal = totalGastos + impuestoUsoPropiedad;
     setForm((prev) => ({
@@ -469,7 +470,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       totalLiquidado: totalLiquidado.toFixed(2),
       confirmacionTotal: confirmacionTotal.toFixed(2),
     }));
-  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, step]);
+  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, step]);
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
@@ -545,7 +546,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       ivaComision = tarifaServicios * 0.19;
       totalComisionIVA += ivaComision;
     }
-    const impuestoUsoPropiedad = totalGastos * 0.19;
+    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
+    const impuestoUsoPropiedad = totalGastos * (pct / 100);
     const totalLiquidado = totalGastos - tarifaServicios + impuestoUsoPropiedad;
     const confirmacionTotal = totalGastos + impuestoUsoPropiedad;
     setForm((prev) => ({
@@ -979,7 +981,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                       <input name="totalComisionIVA" value={formatCurrency(form.totalComisionIVA)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
 
-                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint="19% sobre el total de gastos de la reserva.">
+                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint={`Aplica el % definido en paso 2 (${form.impuestoUsoPct || '0'}%) sobre el total de gastos.`}>
                       <input name="impuestoUsoPropiedad" value={formatCurrency(form.impuestoUsoPropiedad)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
 
