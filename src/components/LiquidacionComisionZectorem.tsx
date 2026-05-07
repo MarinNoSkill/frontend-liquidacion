@@ -40,6 +40,7 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
   const [view, setView]           = useState<'list' | 'form'>('list');
   const [filterMode, setFilterMode] = useState<'todas' | 'pendientes' | 'comisionadas'>('todas');
   const [selected, setSelected]   = useState<ComisionRecord | null>(null);
+  const [comisionPctInput, setComisionPctInput] = useState('15');
   const [pctInput, setPctInput]   = useState('');
   const [noComprobante, setNoComprobante] = useState('');
   const [identificacion, setIdentificacion] = useState('');
@@ -72,6 +73,7 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
 
   const openForm = (record: ComisionRecord) => {
     setSelected(record);
+    setComisionPctInput('15');
     setPctInput('');
     setNoComprobante(record.no_comprobante ?? '');
     setIdentificacion(record.identificacion ?? '');
@@ -81,7 +83,9 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
 
   // ── Cálculos (usados solo en vista form) ──
   const baseComision   = selected?.confirmacion_total ?? 0;
-  const comision       = baseComision * 0.15;
+  const comisionPctNum = parseFloat(comisionPctInput);
+  const comisionPct    = Number.isFinite(comisionPctNum) ? comisionPctNum : 0;
+  const comision       = baseComision * (comisionPct / 100);
   const ivaComision19  = comision * 0.19;
   const pctNum         = parseFloat(pctInput) || 0;
   const retencionFuente = selected?.responsable_iva ? (pctNum / 100) * comision : 0;
@@ -91,6 +95,10 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
 
   const handleGuardar = async () => {
     if (!selected) return;
+    if (!comisionPctInput || !Number.isFinite(parseFloat(comisionPctInput))) {
+      setSaveMsg('Ingresa el porcentaje de comisión.');
+      return;
+    }
     if (selected.responsable_iva && !pctInput) {
       setSaveMsg('Ingresa el porcentaje de retención en la fuente.');
       return;
@@ -287,8 +295,22 @@ export default function LiquidacionComisionZectorem({ onNavigate, currency = 'CO
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8', marginBottom: '0.3rem' }}>
                   Comisión
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                  <label className="field-label" style={{ margin: 0, fontSize: '0.75rem', color: '#1d4ed8' }}>Porcentaje</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={comisionPctInput}
+                    onChange={e => setComisionPctInput(e.target.value)}
+                    className="input"
+                    style={{ width: '110px' }}
+                  />
+                  <span style={{ fontWeight: 800, color: '#1e40af', fontSize: '1rem' }}>%</span>
+                </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e40af' }}>{fmt(comision)}</div>
-                <div style={{ fontSize: '0.72rem', color: '#93c5fd', marginTop: '0.2rem' }}>= Base Comisión × 15%</div>
+                <div style={{ fontSize: '0.72rem', color: '#93c5fd', marginTop: '0.2rem' }}>= Base Comisión × {comisionPct}%</div>
               </div>
 
               {/* IVA COMISION 19% */}
