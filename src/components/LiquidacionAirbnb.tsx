@@ -239,7 +239,6 @@ const initialState = {
   tarifaLimpieza: '',
   incluirTarifaLimpieza: true,
   incluirLimpiezaEnTarifa: true,
-  incluirLimpiezaEnIngreso: true,
   totalIngresoReserva: '',
   impuestoUsoPct: '19',
   impuestoUso: '',
@@ -340,7 +339,6 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
           tarifaLimpieza:       num(d.tarifa_limpieza),
           incluirTarifaLimpieza: true,
           incluirLimpiezaEnTarifa: true,
-          incluirLimpiezaEnIngreso: true,
           totalIngresoReserva:  num(d.total_ingreso_reserva),
           impuestoUsoPct:       pctRounded,
           impuestoUso:          num(d.impuesto_uso),
@@ -434,9 +432,9 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     if (form.reservaInicial || form.tarifaLimpieza) {
       const reservaInicial = parseFloat(form.reservaInicial) || 0;
       const tarifaLimpieza = parseFloat(form.tarifaLimpieza) || 0;
-      const totalIngresoReserva = reservaInicial + (form.incluirLimpiezaEnIngreso ? tarifaLimpieza : 0);
+      const totalIngresoReserva = reservaInicial + tarifaLimpieza;
       const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
-      const baseImpuesto = form.incluirTarifaLimpieza ? (reservaInicial + tarifaLimpieza) : reservaInicial;
+      const baseImpuesto = form.incluirTarifaLimpieza ? totalIngresoReserva : reservaInicial;
       const impuestoUso = baseImpuesto * (pct / 100);
       const huespedPago = totalIngresoReserva + impuestoUso;
       setForm((prev) => ({
@@ -446,7 +444,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
         huespedPago: huespedPago.toFixed(2),
       }));
     }
-  }, [form.reservaInicial, form.tarifaLimpieza, form.impuestoUsoPct, form.incluirTarifaLimpieza, form.incluirLimpiezaEnIngreso]);
+  }, [form.reservaInicial, form.tarifaLimpieza, form.impuestoUsoPct, form.incluirTarifaLimpieza]);
 
   // Step 3 calculations
   React.useEffect(() => {
@@ -471,9 +469,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
     const impuestoUsoPropiedad = totalGastos * (pct / 100);
     let baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
-    const limpiezaYaIncluida = form.incluirLimpiezaEnIngreso;
-    if (form.incluirLimpiezaEnTarifa && !limpiezaYaIncluida) baseTarifa += tarifaLimpieza;
-    else if (!form.incluirLimpiezaEnTarifa && limpiezaYaIncluida) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
+    if (!form.incluirLimpiezaEnTarifa) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
     const tarifaServicios = baseTarifa * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
@@ -492,7 +488,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       totalLiquidado: totalLiquidado.toFixed(2),
       confirmacionTotal: confirmacionTotal.toFixed(2),
     }));
-  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, form.incluirImpuestoBase, form.tarifaLimpieza, form.incluirLimpiezaEnTarifa, form.incluirLimpiezaEnIngreso, step]);
+  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, form.incluirImpuestoBase, form.tarifaLimpieza, form.incluirLimpiezaEnTarifa, step]);
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
@@ -566,9 +562,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
     const impuestoUsoPropiedad = totalGastos * (pct / 100);
     let baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
-    const limpiezaYaIncluida = form.incluirLimpiezaEnIngreso;
-    if (form.incluirLimpiezaEnTarifa && !limpiezaYaIncluida) baseTarifa += tarifaLimpieza;
-    else if (!form.incluirLimpiezaEnTarifa && limpiezaYaIncluida) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
+    if (!form.incluirLimpiezaEnTarifa) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
     const tarifaServicios = baseTarifa * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
@@ -889,18 +883,9 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                     <FieldShell label="Reserva inicial" icon={MoneyIcon} hint="Valor bruto de la reserva antes de ajustes." error={errors.reservaInicial}>
                       <input {...numericInput('reservaInicial')} />
                     </FieldShell>
-                    <FieldShell label="Tarifa limpieza" icon={ReceiptIcon} hint={`${form.incluirLimpiezaEnIngreso ? 'Incluida en Total ingreso reserva.' : 'EXCLUIDA de Total ingreso reserva (afecta al IVA).'} ${form.incluirTarifaLimpieza ? 'Incluida en la base del impuesto uso propiedad.' : 'EXCLUIDA de la base del impuesto uso propiedad.'} ${form.incluirLimpiezaEnTarifa ? 'Incluida en la base de Tarifa servicios.' : 'EXCLUIDA de la base de Tarifa servicios.'}`} error={errors.tarifaLimpieza}>
+                    <FieldShell label="Tarifa limpieza" icon={ReceiptIcon} hint={`${form.incluirTarifaLimpieza ? 'Incluida en la base del impuesto uso propiedad.' : 'EXCLUIDA de la base del impuesto uso propiedad.'} ${form.incluirLimpiezaEnTarifa ? 'Incluida en la base de Tarifa servicios.' : 'EXCLUIDA de la base de Tarifa servicios.'}`} error={errors.tarifaLimpieza}>
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input {...numericInput('tarifaLimpieza')} style={{ flex: 1, minWidth: '8rem' }} />
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se desmarca, la tarifa de limpieza NO se sumará a Total ingreso reserva. Esto cambia el IVA (impuesto uso) y el huésped paga.">
-                          <input
-                            type="checkbox"
-                            name="incluirLimpiezaEnIngreso"
-                            checked={form.incluirLimpiezaEnIngreso}
-                            onChange={handleChange}
-                          />
-                          <span>Incluir en Total ingreso</span>
-                        </label>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se desmarca, la tarifa de limpieza no entra en la base del impuesto uso propiedad.">
                           <input
                             type="checkbox"
@@ -921,7 +906,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                         </label>
                       </div>
                     </FieldShell>
-                    <FieldShell label="Total ingreso reserva" icon={SparkIcon} hint={form.incluirLimpiezaEnIngreso ? 'Reserva inicial + tarifa limpieza (calculado).' : 'Reserva inicial (limpieza EXCLUIDA — calculado).'}>
+                    <FieldShell label="Total ingreso reserva" icon={SparkIcon} hint="Reserva inicial + tarifa limpieza (calculado).">
                       <input name="totalIngresoReserva" value={formatCurrency(form.totalIngresoReserva)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
                     <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint={form.incluirImpuestoBase ? 'Edita el porcentaje (deja en 0 si no aplica). Este valor se incluye en la base de Tarifa servicios.' : 'Edita el porcentaje (deja en 0 si no aplica). Este valor se EXCLUYE de la base de Tarifa servicios.'}>
