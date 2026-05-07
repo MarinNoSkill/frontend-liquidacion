@@ -106,8 +106,8 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
   const [ingDeleting, setIngDeleting] = useState<number | null>(null);
 
   // ── Estado compras ──
-  type CmpDraft = { soporte: string; tercero: string; documento: string; itemText: string; valorBruto: string; ivaChecked: boolean; otrosImp: string; valorFact: string; };
-  const emptyCmp = (): CmpDraft => ({ soporte: '', tercero: '', documento: '', itemText: '', valorBruto: '', ivaChecked: false, otrosImp: '', valorFact: '' });
+  type CmpDraft = { soporte: string; tercero: string; documento: string; itemText: string; valorBruto: string; ivaChecked: boolean; ivaIncluido: boolean; otrosImp: string; valorFact: string; };
+  const emptyCmp = (): CmpDraft => ({ soporte: '', tercero: '', documento: '', itemText: '', valorBruto: '', ivaChecked: false, ivaIncluido: false, otrosImp: '', valorFact: '' });
 
   const [compras, setCompras]         = useState<CompraRow[]>([]);
   const [cmpLoading, setCmpLoading]   = useState(true);
@@ -247,7 +247,7 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
     for (const [, item] of cmpItems.entries()) {
       const valBruto   = parseFloat(item.valorBruto) || 0;
       const otrosImp   = parseFloat(item.otrosImp)   || 0;
-      const ivaNum     = item.ivaChecked ? valBruto * 0.19 : 0;
+      const ivaNum     = (item.ivaChecked && !item.ivaIncluido) ? valBruto * 0.19 : 0;
       const valFactNum = parseFloat(item.valorFact) || 0;
       const valAPagar  = valBruto + ivaNum + otrosImp + valFactNum;
       try {
@@ -589,7 +589,7 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
                   const totalGeneral = cmpItems.reduce((s, it) => {
                     const vb = parseFloat(it.valorBruto) || 0;
                     const oi = parseFloat(it.otrosImp)   || 0;
-                    const iv = it.ivaChecked ? vb * 0.19 : 0;
+                    const iv = (it.ivaChecked && !it.ivaIncluido) ? vb * 0.19 : 0;
                     return s + vb + iv + oi + (parseFloat(it.valorFact) || 0);
                   }, 0);
                   return (
@@ -598,7 +598,7 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
                         const isFirst    = idx === 0;
                         const valBruto   = parseFloat(item.valorBruto) || 0;
                         const otrosImp   = parseFloat(item.otrosImp)   || 0;
-                        const ivaNum     = item.ivaChecked ? valBruto * 0.19 : 0;
+                        const ivaNum     = (item.ivaChecked && !item.ivaIncluido) ? valBruto * 0.19 : 0;
                         const valFactNum = parseFloat(item.valorFact) || 0;
                         const valAPagar  = valBruto + ivaNum + otrosImp + valFactNum;
                         return (
@@ -630,12 +630,21 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
                               {fieldWrap(isFirst ? 'Valor bruto (Base = Total comisión IVA ÷ 1.19 — editable)' : 'Valor bruto',
                                 <input type="number" value={item.valorBruto} onChange={e => updateCmpItem(idx, 'valorBruto', e.target.value)} placeholder="0.00" style={inputStyle} />
                               )}
+                              {fieldWrap('Valor con IVA incluido',
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', minHeight: '2.25rem' }} title="Si se marca, el valor bruto YA incluye el 19% de IVA y no se suma de nuevo en el total.">
+                                  <input type="checkbox" checked={item.ivaIncluido} onChange={e => updateCmpItem(idx, 'ivaIncluido', e.target.checked)}
+                                    style={{ width: '1rem', height: '1rem', accentColor: '#0284c7', cursor: 'pointer', flexShrink: 0 }} />
+                                  <span style={{ fontSize: '0.875rem', fontWeight: item.ivaIncluido ? 700 : 400, color: item.ivaIncluido ? '#0284c7' : '#64748b' }}>
+                                    {item.ivaIncluido ? 'IVA ya incluido en el bruto' : 'No (IVA aparte si aplica)'}
+                                  </span>
+                                </label>
+                              )}
                               {fieldWrap('IVA (19% sobre valor bruto)',
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', minHeight: '2.25rem' }}>
-                                  <input type="checkbox" checked={item.ivaChecked} onChange={e => updateCmpItem(idx, 'ivaChecked', e.target.checked)}
-                                    style={{ width: '1rem', height: '1rem', accentColor: '#7c3aed', cursor: 'pointer', flexShrink: 0 }} />
-                                  <span style={{ fontSize: '0.875rem', fontWeight: item.ivaChecked ? 700 : 400, color: item.ivaChecked ? '#7c3aed' : '#64748b' }}>
-                                    {item.ivaChecked ? `19% = ${fmt(valBruto * 0.19)}` : 'No aplica'}
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: item.ivaIncluido ? '#f1f5f9' : '#fff', cursor: item.ivaIncluido ? 'not-allowed' : 'pointer', minHeight: '2.25rem', opacity: item.ivaIncluido ? 0.6 : 1 }} title={item.ivaIncluido ? 'No aplica: el IVA ya está dentro del valor bruto.' : ''}>
+                                  <input type="checkbox" checked={item.ivaChecked && !item.ivaIncluido} disabled={item.ivaIncluido} onChange={e => updateCmpItem(idx, 'ivaChecked', e.target.checked)}
+                                    style={{ width: '1rem', height: '1rem', accentColor: '#7c3aed', cursor: item.ivaIncluido ? 'not-allowed' : 'pointer', flexShrink: 0 }} />
+                                  <span style={{ fontSize: '0.875rem', fontWeight: (item.ivaChecked && !item.ivaIncluido) ? 700 : 400, color: (item.ivaChecked && !item.ivaIncluido) ? '#7c3aed' : '#64748b' }}>
+                                    {item.ivaIncluido ? 'No aplica (ya incluido)' : (item.ivaChecked ? `19% = ${fmt(valBruto * 0.19)}` : 'No aplica')}
                                   </span>
                                 </label>
                               )}
