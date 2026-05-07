@@ -468,8 +468,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const totalGastos = parseFloat(form.totalGastos) || 0;
     const tarifaLimpieza = parseFloat(form.tarifaLimpieza) || 0;
     const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
-    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
-    const impuestoUsoPropiedad = totalGastos * (pct / 100);
+    const impuestoUsoPropiedad = parseFloat(form.impuestoUso) || 0;
     let baseTarifa: number;
     if (form.liquidacionSinIVA) {
       baseTarifa = totalGastos;
@@ -495,7 +494,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       totalLiquidado: totalLiquidado.toFixed(2),
       confirmacionTotal: confirmacionTotal.toFixed(2),
     }));
-  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, form.incluirImpuestoBase, form.tarifaLimpieza, form.incluirLimpiezaEnTarifa, form.liquidacionSinIVA, step]);
+  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUso, form.tarifaServiciosPct, form.incluirImpuestoBase, form.tarifaLimpieza, form.incluirLimpiezaEnTarifa, form.liquidacionSinIVA, step]);
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
@@ -566,8 +565,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const totalGastos = parseFloat(form.totalGastos) || 0;
     const tarifaLimpieza = parseFloat(form.tarifaLimpieza) || 0;
     const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
-    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
-    const impuestoUsoPropiedad = totalGastos * (pct / 100);
+    const impuestoUsoPropiedad = parseFloat(form.impuestoUso) || 0;
     let baseTarifa: number;
     if (form.liquidacionSinIVA) {
       baseTarifa = totalGastos;
@@ -1084,7 +1082,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                       <input name="totalComisionIVA" value={formatCurrency(form.totalComisionIVA)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
 
-                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint={`Aplica el % definido en paso 2 (${form.impuestoUsoPct || '0'}%) sobre el total de gastos.`}>
+                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint={`Mismo valor calculado en el paso 2 (${form.impuestoUsoPct || '0'}%).`}>
                       <input name="impuestoUsoPropiedad" value={formatCurrency(form.impuestoUsoPropiedad)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
 
