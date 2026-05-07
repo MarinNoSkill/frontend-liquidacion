@@ -245,6 +245,7 @@ const initialState = {
   ajustePrecioNoche: '',
   totalGastos: '',
   tarifaServiciosPct: '15.5',
+  incluirImpuestoBase: true,
   tarifaServicios: '',
   ivaComision: '',
   totalComisionIVA: '',
@@ -342,6 +343,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
           ajustePrecioNoche:    num(d.ajuste_precio_noche),
           totalGastos:          num(d.total_gastos),
           tarifaServiciosPct:   tarifaPct,
+          incluirImpuestoBase:  true,
           tarifaServicios:      num(d.tarifa_servicios),
           ivaComision:          num(d.iva_comision),
           totalComisionIVA:     num(d.total_comision_iva),
@@ -458,15 +460,16 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const huespedPago = parseFloat(form.huespedPago) || 0;
     const totalGastos = parseFloat(form.totalGastos) || 0;
     const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
-    const tarifaServicios = huespedPago * (tarifaServiciosPct / 100);
+    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
+    const impuestoUsoPropiedad = totalGastos * (pct / 100);
+    const baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
+    const tarifaServicios = baseTarifa * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
     if (form.comisionConIVA) {
       ivaComision = tarifaServicios * 0.19;
       totalComisionIVA += ivaComision;
     }
-    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
-    const impuestoUsoPropiedad = totalGastos * (pct / 100);
     const totalLiquidado = totalGastos - totalComisionIVA + impuestoUsoPropiedad;
     const confirmacionTotal = totalGastos + impuestoUsoPropiedad;
     setForm((prev) => ({
@@ -478,7 +481,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       totalLiquidado: totalLiquidado.toFixed(2),
       confirmacionTotal: confirmacionTotal.toFixed(2),
     }));
-  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, step]);
+  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, form.incluirImpuestoBase, step]);
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
@@ -548,15 +551,16 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const huespedPago = parseFloat(form.huespedPago) || 0;
     const totalGastos = parseFloat(form.totalGastos) || 0;
     const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
-    const tarifaServicios = huespedPago * (tarifaServiciosPct / 100);
+    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
+    const impuestoUsoPropiedad = totalGastos * (pct / 100);
+    const baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
+    const tarifaServicios = baseTarifa * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
     if (form.comisionConIVA) {
       ivaComision = tarifaServicios * 0.19;
       totalComisionIVA += ivaComision;
     }
-    const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
-    const impuestoUsoPropiedad = totalGastos * (pct / 100);
     const totalLiquidado = totalGastos - totalComisionIVA + impuestoUsoPropiedad;
     const confirmacionTotal = totalGastos + impuestoUsoPropiedad;
     setForm((prev) => ({
@@ -974,8 +978,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                   </div>
 
                   <div className="form-grid">
-                    <FieldShell label={`Tarifa servicios (${String(form.tarifaServiciosPct || '0').replace('.', ',')}%)`} icon={ReceiptIcon} hint="Comisión base sobre el pago del huésped. La tasa es editable.">
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <FieldShell label={`Tarifa servicios (${String(form.tarifaServiciosPct || '0').replace('.', ',')}%)`} icon={ReceiptIcon} hint={form.incluirImpuestoBase ? 'Base = huésped paga. La tasa es editable.' : 'Base = huésped paga − impuesto uso propiedad. La tasa es editable.'}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input
                           name="tarifaServiciosPct"
                           value={form.tarifaServiciosPct}
@@ -994,8 +998,17 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                           readOnly
                           placeholder="0,00"
                           className="input input-readonly"
-                          style={{ flex: 1 }}
+                          style={{ flex: 1, minWidth: '8rem' }}
                         />
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se desmarca, la tarifa se calcula sobre (huésped paga − impuesto uso propiedad).">
+                          <input
+                            type="checkbox"
+                            name="incluirImpuestoBase"
+                            checked={form.incluirImpuestoBase}
+                            onChange={handleChange}
+                          />
+                          <span>Incluir impuesto</span>
+                        </label>
                       </div>
                     </FieldShell>
 
