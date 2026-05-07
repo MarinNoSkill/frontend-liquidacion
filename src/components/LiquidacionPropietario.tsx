@@ -631,8 +631,20 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
                                 <input type="number" value={item.valorBruto} onChange={e => updateCmpItem(idx, 'valorBruto', e.target.value)} placeholder="0.00" style={inputStyle} />
                               )}
                               {fieldWrap('Valor con IVA incluido',
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', minHeight: '2.25rem' }} title="Si se marca, el valor bruto YA incluye el 19% de IVA y no se suma de nuevo en el total.">
-                                  <input type="checkbox" checked={item.ivaIncluido} onChange={e => updateCmpItem(idx, 'ivaIncluido', e.target.checked)}
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', minHeight: '2.25rem' }} title="Si se marca y el IVA estaba activado, su monto se suma al valor bruto y la casilla de IVA queda en No aplica.">
+                                  <input type="checkbox" checked={item.ivaIncluido}
+                                    onChange={e => {
+                                      const checked = e.target.checked;
+                                      setCmpItems(prev => prev.map((it, i) => {
+                                        if (i !== idx) return it;
+                                        if (checked && it.ivaChecked) {
+                                          const vb = parseFloat(it.valorBruto) || 0;
+                                          const nuevoBruto = vb * 1.19;
+                                          return { ...it, ivaIncluido: true, ivaChecked: false, valorBruto: nuevoBruto.toFixed(2) };
+                                        }
+                                        return { ...it, ivaIncluido: checked };
+                                      }));
+                                    }}
                                     style={{ width: '1rem', height: '1rem', accentColor: '#0284c7', cursor: 'pointer', flexShrink: 0 }} />
                                   <span style={{ fontSize: '0.875rem', fontWeight: item.ivaIncluido ? 700 : 400, color: item.ivaIncluido ? '#0284c7' : '#64748b' }}>
                                     {item.ivaIncluido ? 'IVA ya incluido en el bruto' : 'No (IVA aparte si aplica)'}
