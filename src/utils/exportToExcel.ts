@@ -802,3 +802,82 @@ export const exportAllHistorialToExcel = async () => {
   const filename = `Historial_Contratos_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
+
+// ── Export del resumen agrupado por propiedad ───────────────────────────
+export type ResumenContratoRow = {
+  propiedad: string;
+  propietario: string;
+  count: number;
+  ingreso_reserva: number;
+  mayor_ingreso: number;
+  menos_comision_airbnb: number;
+  iva_comision_airbnb: number;
+  otros_cobros: number;
+  total: number;
+  recibido_banco: number;
+  diferencia: number;
+  menos_comision: number;
+  menos_iva_comision: number;
+  retencion_fuente: number;
+  total_a_entregar: number;
+};
+
+export const exportResumenContratosToExcel = (
+  rows: ResumenContratoRow[],
+  grandTotal: ResumenContratoRow,
+) => {
+  const headers = [
+    'Propiedad', 'Propietario', '# Contratos',
+    'Ingreso reserva', 'Mayor ingreso',
+    'Comisión Airbnb', 'IVA com. Airbnb', 'Otros cobros',
+    'Total', 'Recibido banco', 'Diferencia',
+    'Comisión', 'IVA comisión', 'Retención fuente', 'Total a entregar',
+  ];
+  const currencyCols = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+  const dataRows: (string | number | null)[][] = rows.map(r => [
+    r.propiedad, r.propietario, r.count,
+    r.ingreso_reserva, r.mayor_ingreso,
+    r.menos_comision_airbnb, r.iva_comision_airbnb, r.otros_cobros,
+    r.total, r.recibido_banco, r.diferencia,
+    r.menos_comision, r.menos_iva_comision, r.retencion_fuente, r.total_a_entregar,
+  ]);
+  const totalRow: (string | number | null)[] = [
+    'TOTAL ACUMULADO', '—', grandTotal.count,
+    grandTotal.ingreso_reserva, grandTotal.mayor_ingreso,
+    grandTotal.menos_comision_airbnb, grandTotal.iva_comision_airbnb, grandTotal.otros_cobros,
+    grandTotal.total, grandTotal.recibido_banco, grandTotal.diferencia,
+    grandTotal.menos_comision, grandTotal.menos_iva_comision, grandTotal.retencion_fuente, grandTotal.total_a_entregar,
+  ];
+
+  const ws = buildSheet(headers, [...dataRows, totalRow], currencyCols);
+
+  // Resaltar la fila de total acumulado (última)
+  const totalRowIdx = dataRows.length + 1;
+  const TOTAL_ROW_STYLE = {
+    font:      { bold: true, sz: 11, color: { rgb: '0F172A' } },
+    fill:      { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+    alignment: { vertical: 'center' },
+    border: {
+      top:    { style: 'medium', color: { rgb: '64748B' } },
+      bottom: { style: 'thin',   color: { rgb: 'CBD5E1' } },
+      left:   { style: 'thin',   color: { rgb: 'CBD5E1' } },
+      right:  { style: 'thin',   color: { rgb: 'CBD5E1' } },
+    },
+  };
+  const TOTAL_CURRENCY_STYLE = {
+    ...TOTAL_ROW_STYLE,
+    alignment: { horizontal: 'right', vertical: 'center' },
+    numFmt:    CURRENCY_FMT,
+  };
+  headers.forEach((_, c) => {
+    const addr = XLSX.utils.encode_cell({ r: totalRowIdx, c });
+    if (!ws[addr]) return;
+    ws[addr].s = currencyCols.includes(c) ? TOTAL_CURRENCY_STYLE : TOTAL_ROW_STYLE;
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Resumen por Propiedad');
+
+  const filename = `Resumen_Contratos_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};

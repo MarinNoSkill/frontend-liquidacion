@@ -237,6 +237,7 @@ const initialState = {
   numeroReserva: '',
   reservaInicial: '',
   tarifaLimpieza: '',
+  incluirTarifaLimpieza: true,
   totalIngresoReserva: '',
   impuestoUsoPct: '19',
   impuestoUso: '',
@@ -335,6 +336,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
           numeroReserva:        String(d.numero_reserva ?? ''),
           reservaInicial:       num(d.reserva_inicial),
           tarifaLimpieza:       num(d.tarifa_limpieza),
+          incluirTarifaLimpieza: true,
           totalIngresoReserva:  num(d.total_ingreso_reserva),
           impuestoUsoPct:       pctRounded,
           impuestoUso:          num(d.impuesto_uso),
@@ -427,7 +429,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
   React.useEffect(() => {
     if (form.reservaInicial || form.tarifaLimpieza) {
       const reservaInicial = parseFloat(form.reservaInicial) || 0;
-      const tarifaLimpieza = parseFloat(form.tarifaLimpieza) || 0;
+      const tarifaLimpiezaRaw = parseFloat(form.tarifaLimpieza) || 0;
+      const tarifaLimpieza = form.incluirTarifaLimpieza ? tarifaLimpiezaRaw : 0;
       const totalIngresoReserva = reservaInicial + tarifaLimpieza;
       const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
       const impuestoUso = totalIngresoReserva * (pct / 100);
@@ -439,20 +442,21 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
         huespedPago: huespedPago.toFixed(2),
       }));
     }
-  }, [form.reservaInicial, form.tarifaLimpieza, form.impuestoUsoPct]);
+  }, [form.reservaInicial, form.tarifaLimpieza, form.impuestoUsoPct, form.incluirTarifaLimpieza]);
 
   // Step 3 calculations
   React.useEffect(() => {
     if (form.tarifaHabitacion || form.ajustePrecioNoche) {
       const tarifaHabitacion = parseFloat(form.tarifaHabitacion) || 0;
-      const tarifaLimpieza = parseFloat(form.tarifaLimpieza) || 0;
+      const tarifaLimpiezaRaw = parseFloat(form.tarifaLimpieza) || 0;
+      const tarifaLimpieza = form.incluirTarifaLimpieza ? tarifaLimpiezaRaw : 0;
       const ajustePrecioNoche = parseFloat(form.ajustePrecioNoche) || 0;
       setForm((prev) => ({
         ...prev,
         totalGastos: (tarifaHabitacion + tarifaLimpieza - ajustePrecioNoche).toFixed(2),
       }));
     }
-  }, [form.tarifaHabitacion, form.ajustePrecioNoche]);
+  }, [form.tarifaHabitacion, form.ajustePrecioNoche, form.tarifaLimpieza, form.incluirTarifaLimpieza]);
 
   // Step 4 calculations
   React.useEffect(() => {
@@ -874,8 +878,19 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                     <FieldShell label="Reserva inicial" icon={MoneyIcon} hint="Valor bruto de la reserva antes de ajustes." error={errors.reservaInicial}>
                       <input {...numericInput('reservaInicial')} />
                     </FieldShell>
-                    <FieldShell label="Tarifa limpieza" icon={ReceiptIcon} hint="Cargo de limpieza asociado a la estadía." error={errors.tarifaLimpieza}>
-                      <input {...numericInput('tarifaLimpieza')} />
+                    <FieldShell label="Tarifa limpieza" icon={ReceiptIcon} hint={form.incluirTarifaLimpieza ? 'Cargo de limpieza asociado a la estadía. Se suma a los cálculos.' : 'Tarifa registrada pero EXCLUIDA del total ingreso reserva y del total gastos.'} error={errors.tarifaLimpieza}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input {...numericInput('tarifaLimpieza')} style={{ flex: 1, minWidth: '8rem' }} />
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se desmarca, la tarifa de limpieza no se suma al total ingreso reserva ni al total gastos.">
+                          <input
+                            type="checkbox"
+                            name="incluirTarifaLimpieza"
+                            checked={form.incluirTarifaLimpieza}
+                            onChange={handleChange}
+                          />
+                          <span>Incluir en cálculos</span>
+                        </label>
+                      </div>
                     </FieldShell>
                     <FieldShell label="Total ingreso reserva" icon={SparkIcon} hint="Reserva inicial + tarifa limpieza (calculado).">
                       <input name="totalIngresoReserva" value={formatCurrency(form.totalIngresoReserva)} readOnly placeholder="0,00" className="input input-readonly" />
