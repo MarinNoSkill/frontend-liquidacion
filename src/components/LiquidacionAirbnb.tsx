@@ -894,8 +894,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                     <FieldShell label="Total ingreso reserva" icon={SparkIcon} hint="Reserva inicial + tarifa limpieza (calculado).">
                       <input name="totalIngresoReserva" value={formatCurrency(form.totalIngresoReserva)} readOnly placeholder="0,00" className="input input-readonly" />
                     </FieldShell>
-                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint="Edita el porcentaje (deja en 0 si no aplica).">
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                    <FieldShell label="Impuesto uso propiedad" icon={MoneyIcon} hint={form.incluirImpuestoBase ? 'Edita el porcentaje (deja en 0 si no aplica). Este valor se incluye en la base de Tarifa servicios.' : 'Edita el porcentaje (deja en 0 si no aplica). Este valor se EXCLUYE de la base de Tarifa servicios.'}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
                         <select
                           name="impuestoUsoPctPreset"
                           value={['0','19'].includes(form.impuestoUsoPct) ? form.impuestoUsoPct : 'custom'}
@@ -931,8 +931,17 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                           readOnly
                           placeholder="0,00"
                           className="input input-readonly"
-                          style={{ flex: 1 }}
+                          style={{ flex: 1, minWidth: '8rem' }}
                         />
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se desmarca, este impuesto se restará de la base sobre la que se calcula Tarifa servicios (15,5%) en el paso 4.">
+                          <input
+                            type="checkbox"
+                            name="incluirImpuestoBase"
+                            checked={form.incluirImpuestoBase}
+                            onChange={handleChange}
+                          />
+                          <span>Incluir en Tarifa servicios</span>
+                        </label>
                       </div>
                     </FieldShell>
                     <FieldShell label="Huésped paga" icon={ReceiptIcon} hint="Total con impuesto de uso incluido.">
