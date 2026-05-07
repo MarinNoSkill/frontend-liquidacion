@@ -244,6 +244,7 @@ const initialState = {
   tarifaHabitacion: '',
   ajustePrecioNoche: '',
   totalGastos: '',
+  tarifaServiciosPct: '15.5',
   tarifaServicios: '',
   ivaComision: '',
   totalComisionIVA: '',
@@ -315,6 +316,11 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
         const impuesto     = parseFloat(num(d.impuesto_uso)) || 0;
         const pct = totalIngreso > 0 ? (impuesto / totalIngreso) * 100 : 19;
         const pctRounded = Math.abs(pct - 19) < 0.01 ? '19' : (pct === 0 ? '0' : String(parseFloat(pct.toFixed(4))));
+        const huespedPagoNum = parseFloat(num(d.huesped_pago)) || 0;
+        const tarifaServiciosNum = parseFloat(num(d.tarifa_servicios)) || 0;
+        const tarifaPct = huespedPagoNum > 0 && tarifaServiciosNum > 0
+          ? String(parseFloat(((tarifaServiciosNum / huespedPagoNum) * 100).toFixed(4)))
+          : '15.5';
         setForm({
           documentoPropietario: String(d.propietario_doc ?? ''),
           nombrePropiedad:      String(d.propiedad ?? ''),
@@ -335,6 +341,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
           tarifaHabitacion:     num(d.tarifa_habitacion),
           ajustePrecioNoche:    num(d.ajuste_precio_noche),
           totalGastos:          num(d.total_gastos),
+          tarifaServiciosPct:   tarifaPct,
           tarifaServicios:      num(d.tarifa_servicios),
           ivaComision:          num(d.iva_comision),
           totalComisionIVA:     num(d.total_comision_iva),
@@ -450,7 +457,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     if (step !== 4) return;
     const huespedPago = parseFloat(form.huespedPago) || 0;
     const totalGastos = parseFloat(form.totalGastos) || 0;
-    const tarifaServicios = huespedPago * 0.155;
+    const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
+    const tarifaServicios = huespedPago * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
     if (form.comisionConIVA) {
@@ -470,7 +478,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       totalLiquidado: totalLiquidado.toFixed(2),
       confirmacionTotal: confirmacionTotal.toFixed(2),
     }));
-  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, step]);
+  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, step]);
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
@@ -539,7 +547,8 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
   const calcularComisiones = () => {
     const huespedPago = parseFloat(form.huespedPago) || 0;
     const totalGastos = parseFloat(form.totalGastos) || 0;
-    const tarifaServicios = huespedPago * 0.155;
+    const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
+    const tarifaServicios = huespedPago * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
     if (form.comisionConIVA) {
@@ -965,8 +974,29 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                   </div>
 
                   <div className="form-grid">
-                    <FieldShell label="Tarifa servicios 15,5%" icon={ReceiptIcon} hint="Comisión base sobre el pago del huésped (calculado).">
-                      <input name="tarifaServicios" value={formatCurrency(form.tarifaServicios)} readOnly placeholder="0,00" className="input input-readonly" />
+                    <FieldShell label={`Tarifa servicios (${String(form.tarifaServiciosPct || '0').replace('.', ',')}%)`} icon={ReceiptIcon} hint="Comisión base sobre el pago del huésped. La tasa es editable.">
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input
+                          name="tarifaServiciosPct"
+                          value={form.tarifaServiciosPct}
+                          onChange={handleChange}
+                          onKeyDown={handleNumericKeyDown}
+                          inputMode="decimal"
+                          placeholder="15,5"
+                          className="input"
+                          style={{ maxWidth: '6rem' }}
+                          aria-label="Tasa de tarifa de servicios en porcentaje"
+                        />
+                        <span style={{ opacity: 0.7 }}>%</span>
+                        <input
+                          name="tarifaServicios"
+                          value={formatCurrency(form.tarifaServicios)}
+                          readOnly
+                          placeholder="0,00"
+                          className="input input-readonly"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
                     </FieldShell>
 
                     <ToggleShell label="Ingresar IVA sobre comisión" checked={form.comisionConIVA} name="comisionConIVA" onChange={handleChange} />
@@ -1017,7 +1047,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                       <input {...numericInput('recibidoNeto')} />
                     </FieldShell>
 
-                    <FieldShell label="Comisión anfitriones (15,5%)" icon={ReceiptIcon} hint="Total comisión con IVA (se toma de paso 4).">
+                    <FieldShell label={`Comisión anfitriones (${String(form.tarifaServiciosPct || '0').replace('.', ',')}%)`} icon={ReceiptIcon} hint="Total comisión con IVA (se toma de paso 4).">
                       <input
                         name="menosComisionAnfitriones"
                         value={form.menosComisionAnfitriones ? formatCurrency(form.menosComisionAnfitriones) : ''}
