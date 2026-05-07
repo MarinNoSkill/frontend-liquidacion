@@ -248,6 +248,7 @@ const initialState = {
   totalGastos: '',
   tarifaServiciosPct: '15.5',
   incluirImpuestoBase: true,
+  liquidacionSinIVA: false,
   tarifaServicios: '',
   ivaComision: '',
   totalComisionIVA: '',
@@ -348,6 +349,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
           totalGastos:          num(d.total_gastos),
           tarifaServiciosPct:   tarifaPct,
           incluirImpuestoBase:  true,
+          liquidacionSinIVA:    false,
           tarifaServicios:      num(d.tarifa_servicios),
           ivaComision:          num(d.iva_comision),
           totalComisionIVA:     num(d.total_comision_iva),
@@ -468,8 +470,13 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
     const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
     const impuestoUsoPropiedad = totalGastos * (pct / 100);
-    let baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
-    if (!form.incluirLimpiezaEnTarifa) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
+    let baseTarifa: number;
+    if (form.liquidacionSinIVA) {
+      baseTarifa = totalGastos;
+    } else {
+      baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
+      if (!form.incluirLimpiezaEnTarifa) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
+    }
     const tarifaServicios = baseTarifa * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
@@ -488,7 +495,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
       totalLiquidado: totalLiquidado.toFixed(2),
       confirmacionTotal: confirmacionTotal.toFixed(2),
     }));
-  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, form.incluirImpuestoBase, form.tarifaLimpieza, form.incluirLimpiezaEnTarifa, step]);
+  }, [form.huespedPago, form.totalGastos, form.comisionConIVA, form.impuestoUsoPct, form.tarifaServiciosPct, form.incluirImpuestoBase, form.tarifaLimpieza, form.incluirLimpiezaEnTarifa, form.liquidacionSinIVA, step]);
 
   // Step 5 calculations — cobros
   React.useEffect(() => {
@@ -561,8 +568,13 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
     const tarifaServiciosPct = parseFloat(String(form.tarifaServiciosPct).replace(',', '.')) || 0;
     const pct = parseFloat(String(form.impuestoUsoPct).replace(',', '.')) || 0;
     const impuestoUsoPropiedad = totalGastos * (pct / 100);
-    let baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
-    if (!form.incluirLimpiezaEnTarifa) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
+    let baseTarifa: number;
+    if (form.liquidacionSinIVA) {
+      baseTarifa = totalGastos;
+    } else {
+      baseTarifa = form.incluirImpuestoBase ? huespedPago : Math.max(0, huespedPago - impuestoUsoPropiedad);
+      if (!form.incluirLimpiezaEnTarifa) baseTarifa = Math.max(0, baseTarifa - tarifaLimpieza);
+    }
     const tarifaServicios = baseTarifa * (tarifaServiciosPct / 100);
     let ivaComision = 0;
     let totalComisionIVA = tarifaServicios;
@@ -1016,7 +1028,7 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                   </div>
 
                   <div className="form-grid">
-                    <FieldShell label={`Tarifa servicios (${String(form.tarifaServiciosPct || '0').replace('.', ',')}%)`} icon={ReceiptIcon} hint={form.incluirImpuestoBase ? 'Base = huésped paga. La tasa es editable.' : 'Base = huésped paga − impuesto uso propiedad. La tasa es editable.'}>
+                    <FieldShell label={`Tarifa servicios (${String(form.tarifaServiciosPct || '0').replace('.', ',')}%)`} icon={ReceiptIcon} hint={form.liquidacionSinIVA ? 'Liquidación sin IVA: base = total gastos. La tasa es editable.' : (form.incluirImpuestoBase ? 'Base = huésped paga. La tasa es editable.' : 'Base = huésped paga − impuesto uso propiedad. La tasa es editable.')}>
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input
                           name="tarifaServiciosPct"
@@ -1038,14 +1050,24 @@ function LiquidacionAirbnb({ onNavigate, currency = 'COP', editLiquidacionId = n
                           className="input input-readonly"
                           style={{ flex: 1, minWidth: '8rem' }}
                         />
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se desmarca, la tarifa se calcula sobre (huésped paga − impuesto uso propiedad).">
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: form.liquidacionSinIVA ? 'not-allowed' : 'pointer', opacity: form.liquidacionSinIVA ? 0.5 : 1 }} title="Si se desmarca, la tarifa se calcula sobre (huésped paga − impuesto uso propiedad).">
                           <input
                             type="checkbox"
                             name="incluirImpuestoBase"
                             checked={form.incluirImpuestoBase}
                             onChange={handleChange}
+                            disabled={form.liquidacionSinIVA}
                           />
                           <span>Incluir impuesto</span>
+                        </label>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', fontSize: '0.85rem', cursor: 'pointer' }} title="Si se marca, la base de Tarifa servicios será Total gastos (sin IVA), ignorando huésped paga e impuesto.">
+                          <input
+                            type="checkbox"
+                            name="liquidacionSinIVA"
+                            checked={form.liquidacionSinIVA}
+                            onChange={handleChange}
+                          />
+                          <span>Liquidación sin IVA</span>
                         </label>
                       </div>
                     </FieldShell>
