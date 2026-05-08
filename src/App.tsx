@@ -17,6 +17,7 @@ type ContratoRecord = {
   numero_reserva: string | null;
   ingreso_reserva: number | null;
   mayor_ingreso: number | null;
+  iva_reserva: number | null;
   menos_comision_airbnb: number | null;
   iva_comision_airbnb: number | null;
   otros_cobros: number | null;

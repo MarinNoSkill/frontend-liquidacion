@@ -15,6 +15,8 @@ type HistorialRow = {
   impuesto_uso:      number | null;
   total_gastos:      number | null;
   recibido_neto_banco: number | null;
+  responsable_iva:   boolean | null;
+  residente:         boolean | null;
 };
 type IngresoRow  = { liquidacion_id: number | null; subtotal: number | null; impuesto_cargo: number | null; };
 type CompraRow   = { liquidacion_id: number | null; valor_bruto: number | null; iva: number | null; otros_impuestos: number | null; };
@@ -35,6 +37,7 @@ type ContratoRecord = {
   numero_reserva: string | null;
   ingreso_reserva: number | null;
   mayor_ingreso: number | null;
+  iva_reserva: number | null;
   menos_comision_airbnb: number | null;
   iva_comision_airbnb: number | null;
   otros_cobros: number | null;
@@ -116,13 +119,19 @@ export default function LiquidacionContrato({
         impuesto_uso: contratoData.mayor_ingreso,
         total_gastos: contratoData.ingreso_reserva,
         recibido_neto_banco: contratoData.recibido_banco,
+        responsable_iva: null,
+        residente: null,
       }
     : histFromDb;
   const cmpList = compras;
   const com     = useMemo(() => comisiones.find(c => c.liquidacion_id === selId) ?? null, [comisiones, selId]);
 
+  const aplicaIvaReserva = !contratoData && Boolean(hist?.residente) && Boolean(hist?.responsable_iva);
+  const baseImpuestoUso  = hist?.impuesto_uso ?? 0;
+
   const ingresoReserva      = contratoData?.ingreso_reserva ?? (hist?.total_gastos ?? 0);
-  const mayorIngreso        = contratoData?.mayor_ingreso ?? (hist?.impuesto_uso ?? 0);
+  const mayorIngreso        = contratoData?.mayor_ingreso ?? (aplicaIvaReserva ? 0 : baseImpuestoUso);
+  const ivaReserva          = contratoData?.iva_reserva   ?? (aplicaIvaReserva ? baseImpuestoUso : 0);
   const menosComisionAirbnb = contratoData?.menos_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.valor_bruto ?? 0), 0);
   const ivaComisionAirbnb   = contratoData?.iva_comision_airbnb ?? cmpList.reduce((s, r) => s + (r.iva ?? 0), 0);
   const otrosCobros         = contratoData?.otros_cobros ?? cmpList.reduce((s, r) => s + (r.otros_impuestos ?? 0), 0);
@@ -131,7 +140,7 @@ export default function LiquidacionContrato({
   const menosIvaComision    = contratoData?.menos_iva_comision ?? (com?.iva_comision_19 ?? 0);
   const retencionFuente     = contratoData?.retencion_fuente ?? (com?.retencion_fuente ?? 0);
 
-  const total          = contratoData?.total ?? (ingresoReserva + mayorIngreso - menosComisionAirbnb - ivaComisionAirbnb - otrosCobros);
+  const total          = contratoData?.total ?? (ingresoReserva + mayorIngreso + ivaReserva - menosComisionAirbnb - ivaComisionAirbnb - otrosCobros);
   const diferencia     = contratoData?.diferencia ?? (total - recibidoBanco);
   const totalAEntregar = contratoData?.total_a_entregar ?? (recibidoBanco - menosComision - menosIvaComision - retencionFuente);
 
@@ -149,7 +158,7 @@ export default function LiquidacionContrato({
         body: JSON.stringify({
           propietario: hist.propietario, propiedad: hist.propiedad,
           huesped: hist.huesped, numeroReserva: hist.numero_reserva,
-          ingresoReserva, mayorIngreso, menosComisionAirbnb, ivaComisionAirbnb, otrosCobros,
+          ingresoReserva, mayorIngreso, ivaReserva, menosComisionAirbnb, ivaComisionAirbnb, otrosCobros,
           total, recibidoBanco, diferencia, menosComision,
           menosIvaComision, retencionFuente, totalAEntregar,
         }),
@@ -329,6 +338,7 @@ export default function LiquidacionContrato({
                 <tbody>
                   <Row label="Ingreso Reserva"                    sign="$"  value={ingresoReserva} />
                   <Row label="Servicio exento de IVA art.481 (li) ET - Dec.297-2016"       sign="$"  value={mayorIngreso} />
+                  <Row label="IVA Reserva"                                                  sign="$"  value={ivaReserva} />
                   {/* Always show numeric value (even 0) so user sees the actual sum from compras */}
                   <tr style={{ borderTop: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>Comisión Airbnb Mandante</td>
