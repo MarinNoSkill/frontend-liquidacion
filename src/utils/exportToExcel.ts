@@ -74,6 +74,7 @@ export type ContratoExportData = {
   fecha: string;
   ingreso_reserva: number;
   mayor_ingreso: number;
+  iva_reserva: number;
   menos_comision_airbnb: number;
   iva_comision_airbnb: number;
   otros_cobros: number;
@@ -83,7 +84,12 @@ export type ContratoExportData = {
   menos_comision: number;
   menos_iva_comision: number;
   retencion_fuente: number;
+  gasto_aseo: number;
+  gasto_mantenimiento: number;
+  gasto_otros_cobros: number;
+  gasto_saldo_favor: number;
   total_a_entregar: number;
+  total_recibido_bancolombia: number;
 };
 
 // ── Estilos reutilizables ──────────────────────────────
@@ -176,24 +182,52 @@ function buildContratoSheet(c: ContratoExportData): XLSX.WorkSheet {
   const meta = `${fmtDate(c.fecha)}  ·  ${c.propiedad}  ·  Huésped: ${c.huesped}`;
   const title = `LIQUIDACIÓN CONTRATO A ${(c.propietario || '').toUpperCase()} MANDANTE`;
 
-  rows.push([meta, '', '']);            // 0
-  rows.push([title, '', '']);           // 1
-  rows.push(['', '', '']);              // 2 spacer
-  rows.push(['Ingreso Reserva',                          '$',  c.ingreso_reserva]);        // 3
-  rows.push(['Servicio exento de IVA art.481 (li) ET - Dec.297-2016', '', c.mayor_ingreso]); // 4
-  rows.push(['Comisión Airbnb Mandante',                 '-$', -Math.abs(c.menos_comision_airbnb)]); // 5
-  rows.push(['IVA Comisión Airbnb Mandante',             '-$', -Math.abs(c.iva_comision_airbnb)]);   // 6
-  rows.push(['Otros Cobros Plataforma',                  '-',  -Math.abs(c.otros_cobros)]);// 7
-  rows.push(['TOTAL',                                    '',   c.total]);                  // 8
-  rows.push(['Recibido Banco',                           '',   c.recibido_banco]);         // 9
-  rows.push(['Diferencia',                               '',   c.diferencia]);             // 10
-  rows.push(['', '', '']);                                                                  // 11 spacer
-  rows.push(['Comisión',                                 '$',  c.menos_comision]);         // 12
-  rows.push(['IVA Comisión',                             '$',  c.menos_iva_comision]);     // 13
-  rows.push(['Retención en la Fuente a Favor Zectorem',  '$',  c.retencion_fuente]);       // 14
-  rows.push(['TOTAL A ENTREGAR',                         '',   c.total_a_entregar]);       // 15
+  // Índices construidos dinámicamente para que sea fácil mantener.
+  rows.push([meta, '', '']);
+  const idxMeta = rows.length - 1;
+  rows.push([title, '', '']);
+  const idxTitle = rows.length - 1;
+  rows.push(['', '', '']);
+  const idxSpacer1 = rows.length - 1;
 
-  // Volcar al worksheet manualmente para controlar tipos
+  rows.push(['Ingreso Reserva', '$', c.ingreso_reserva]);
+  rows.push(['Servicio exento de IVA art.481 (li) ET - Dec.297-2016', '$', c.mayor_ingreso]);
+  rows.push(['IVA Reserva', '$', c.iva_reserva]);
+  rows.push(['Comisión Airbnb Mandante', '-$', -Math.abs(c.menos_comision_airbnb)]);
+  rows.push(['IVA Comisión Airbnb Mandante', '-$', -Math.abs(c.iva_comision_airbnb)]);
+  rows.push(['Otros Cobros Plataforma', '-', -Math.abs(c.otros_cobros)]);
+  rows.push(['TOTAL', '', c.total]);
+  const idxTotal = rows.length - 1;
+  rows.push(['Recibido Banco', '', c.recibido_banco]);
+  rows.push(['Diferencia', '', c.diferencia]);
+  rows.push(['', '', '']);
+  const idxSpacer2 = rows.length - 1;
+
+  rows.push(['Comisión', '$', c.menos_comision]);
+  rows.push(['IVA Comisión', '$', c.menos_iva_comision]);
+  rows.push(['Retención en la Fuente a Favor Zectorem (informativo)', '-$', -Math.abs(c.retencion_fuente)]);
+  rows.push(['Aseo', '-$', -Math.abs(c.gasto_aseo)]);
+  rows.push(['Mantenimiento', '-$', -Math.abs(c.gasto_mantenimiento)]);
+  rows.push(['Otros Cobros', '-$', -Math.abs(c.gasto_otros_cobros)]);
+  rows.push(['Saldo a Favor', '$', c.gasto_saldo_favor]);
+  rows.push(['TOTAL A ENTREGAR', '', c.total_a_entregar]);
+  const idxTotalEntregar = rows.length - 1;
+  rows.push(['Total Recibido Bancolombia', '$', c.total_recibido_bancolombia]);
+  const idxRecBank = rows.length - 1;
+
+  // Filas normales: todas las que no son meta/título/spacer/totales destacados.
+  const totalRowIdx = idxTotal;
+  const totalEntregarRowIdx = idxTotalEntregar;
+  const spacerIdx = [idxSpacer1, idxSpacer2];
+  const normalRowIdx: number[] = [];
+  for (let r = idxSpacer1 + 1; r < rows.length; r++) {
+    if (r === totalRowIdx) continue;
+    if (r === totalEntregarRowIdx) continue;
+    if (spacerIdx.includes(r)) continue;
+    normalRowIdx.push(r);
+  }
+
+  // Volcar al worksheet manualmente para controlar tipos.
   rows.forEach((row, r) => {
     row.forEach((val, c2) => {
       const addr = XLSX.utils.encode_cell({ r, c: c2 });
@@ -208,12 +242,12 @@ function buildContratoSheet(c: ContratoExportData): XLSX.WorkSheet {
   });
 
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: 2 } });
-  ws['!cols'] = [{ wch: 46 }, { wch: 6 }, { wch: 22 }];
+  ws['!cols'] = [{ wch: 50 }, { wch: 6 }, { wch: 22 }];
   ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, // meta
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }, // title
-    { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } }, // TOTAL label
-    { s: { r: 15, c: 0 }, e: { r: 15, c: 1 } }, // TOTAL A ENTREGAR label
+    { s: { r: idxMeta,  c: 0 }, e: { r: idxMeta,  c: 2 } },
+    { s: { r: idxTitle, c: 0 }, e: { r: idxTitle, c: 2 } },
+    { s: { r: totalRowIdx,          c: 0 }, e: { r: totalRowIdx,          c: 1 } },
+    { s: { r: totalEntregarRowIdx,  c: 0 }, e: { r: totalEntregarRowIdx,  c: 1 } },
   ];
 
   // Estilos
@@ -222,47 +256,47 @@ function buildContratoSheet(c: ContratoExportData): XLSX.WorkSheet {
     ws[addr].s = s;
   };
 
-  // Meta (gris claro sobre fondo oscuro)
+  // Meta
   for (let c2 = 0; c2 <= 2; c2++) {
-    styleAt(XLSX.utils.encode_cell({ r: 0, c: c2 }), {
+    styleAt(XLSX.utils.encode_cell({ r: idxMeta, c: c2 }), {
       font:      { bold: true, sz: 9, color: { rgb: '94A3B8' } },
       fill:      { patternType: 'solid', fgColor: { rgb: '0F172A' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     });
   }
-  // Title
+  // Título
   for (let c2 = 0; c2 <= 2; c2++) {
-    styleAt(XLSX.utils.encode_cell({ r: 1, c: c2 }), {
+    styleAt(XLSX.utils.encode_cell({ r: idxTitle, c: c2 }), {
       font:      { bold: true, sz: 13, color: { rgb: 'FFFFFF' } },
       fill:      { patternType: 'solid', fgColor: { rgb: '0F172A' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     });
   }
 
-  // Filas normales (label / sign / value)
-  const normalRowIdx = [3, 4, 5, 6, 7, 9, 10, 12, 13, 14];
+  // Filas normales
   normalRowIdx.forEach(r => {
+    const isRetencion = String(rows[r][0] ?? '').startsWith('Retención');
     styleAt(XLSX.utils.encode_cell({ r, c: 0 }), {
-      font:      { bold: false, sz: 10, color: { rgb: '0F172A' } },
+      font:      { bold: false, sz: 10, color: { rgb: isRetencion ? 'DC2626' : '0F172A' } },
       alignment: { horizontal: 'left', vertical: 'center' },
       border:    THIN_BORDER,
     });
     styleAt(XLSX.utils.encode_cell({ r, c: 1 }), {
-      font:      { sz: 10, color: { rgb: '64748B' } },
+      font:      { sz: 10, color: { rgb: isRetencion ? 'DC2626' : '64748B' } },
       alignment: { horizontal: 'center', vertical: 'center' },
       border:    THIN_BORDER,
     });
     styleAt(XLSX.utils.encode_cell({ r, c: 2 }), {
-      font:      { sz: 10, color: { rgb: '0F172A' } },
+      font:      { sz: 10, color: { rgb: isRetencion ? 'DC2626' : '0F172A' } },
       alignment: { horizontal: 'right', vertical: 'center' },
       border:    THIN_BORDER,
       numFmt:    CURRENCY_FMT,
     });
   });
 
-  // TOTAL (amarillo) — fila 8
+  // TOTAL (amarillo)
   for (let c2 = 0; c2 <= 2; c2++) {
-    styleAt(XLSX.utils.encode_cell({ r: 8, c: c2 }), {
+    styleAt(XLSX.utils.encode_cell({ r: totalRowIdx, c: c2 }), {
       font:      { bold: true, sz: 11, color: { rgb: '92400E' } },
       fill:      { patternType: 'solid', fgColor: { rgb: 'FEF3C7' } },
       alignment: { horizontal: c2 === 2 ? 'right' : 'left', vertical: 'center' },
@@ -276,9 +310,9 @@ function buildContratoSheet(c: ContratoExportData): XLSX.WorkSheet {
     });
   }
 
-  // TOTAL A ENTREGAR (oscuro con verde) — fila 15
+  // TOTAL A ENTREGAR (oscuro con verde)
   for (let c2 = 0; c2 <= 2; c2++) {
-    styleAt(XLSX.utils.encode_cell({ r: 15, c: c2 }), {
+    styleAt(XLSX.utils.encode_cell({ r: totalEntregarRowIdx, c: c2 }), {
       font: {
         bold:  true,
         sz:    c2 === 2 ? 13 : 11,
@@ -290,8 +324,19 @@ function buildContratoSheet(c: ContratoExportData): XLSX.WorkSheet {
     });
   }
 
-  // Filas spacer
-  [2, 11].forEach(r => {
+  // Total Recibido Bancolombia (gris claro destacado)
+  for (let c2 = 0; c2 <= 2; c2++) {
+    styleAt(XLSX.utils.encode_cell({ r: idxRecBank, c: c2 }), {
+      font:      { bold: true, sz: 11, color: { rgb: '0F172A' } },
+      fill:      { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } },
+      alignment: { horizontal: c2 === 2 ? 'right' : (c2 === 1 ? 'center' : 'left'), vertical: 'center' },
+      border:    THIN_BORDER,
+      numFmt:    c2 === 2 ? CURRENCY_FMT : undefined,
+    });
+  }
+
+  // Spacers
+  spacerIdx.forEach(r => {
     for (let c2 = 0; c2 <= 2; c2++) {
       styleAt(XLSX.utils.encode_cell({ r, c: c2 }), {
         fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
@@ -299,18 +344,18 @@ function buildContratoSheet(c: ContratoExportData): XLSX.WorkSheet {
     }
   });
 
-  // Alturas
-  ws['!rows'] = [
-    { hpt: 22 }, // meta
-    { hpt: 28 }, // título
-    { hpt: 8 },  // spacer
-    { hpt: 20 }, { hpt: 20 }, { hpt: 20 }, { hpt: 20 }, { hpt: 20 }, // 3..7
-    { hpt: 26 }, // total
-    { hpt: 20 }, { hpt: 20 }, // 9,10
-    { hpt: 8 },  // spacer
-    { hpt: 20 }, { hpt: 20 }, { hpt: 20 }, // 12..14
-    { hpt: 30 }, // total a entregar
-  ];
+  // Alturas: 22, 28, 8, luego 20 por defecto y destacar totales.
+  const rowHeights: { hpt: number }[] = [];
+  for (let r = 0; r < rows.length; r++) {
+    if (r === idxMeta) rowHeights.push({ hpt: 22 });
+    else if (r === idxTitle) rowHeights.push({ hpt: 28 });
+    else if (spacerIdx.includes(r)) rowHeights.push({ hpt: 8 });
+    else if (r === totalRowIdx) rowHeights.push({ hpt: 26 });
+    else if (r === totalEntregarRowIdx) rowHeights.push({ hpt: 30 });
+    else if (r === idxRecBank) rowHeights.push({ hpt: 24 });
+    else rowHeights.push({ hpt: 20 });
+  }
+  ws['!rows'] = rowHeights;
 
   return ws;
 }
@@ -467,6 +512,7 @@ type ContratoSummary = {
   numero_reserva: string | null;
   ingreso_reserva: number | null;
   mayor_ingreso: number | null;
+  iva_reserva: number | null;
   menos_comision_airbnb: number | null;
   iva_comision_airbnb: number | null;
   otros_cobros: number | null;
@@ -476,7 +522,12 @@ type ContratoSummary = {
   menos_comision: number | null;
   menos_iva_comision: number | null;
   retencion_fuente: number | null;
+  gasto_aseo: number | null;
+  gasto_mantenimiento: number | null;
+  gasto_otros_cobros: number | null;
+  gasto_saldo_favor: number | null;
   total_a_entregar: number | null;
+  total_recibido_bancolombia: number | null;
   created_at: string | null;
 };
 type HistLiqContrato = {
@@ -685,10 +736,12 @@ export const exportAllHistorialToExcel = async () => {
       title: '5. LIQUIDACIÓN CONTRATO — Resumen (un cuadro por contrato)',
       headers: [
         '#', 'Fecha', 'Propietario', 'Propiedad', 'Huésped', 'Reserva N°',
-        'Ingreso Reserva', 'Servicio exento IVA art.481', 'Comisión Airbnb Mandante',
-        'IVA Comisión Airbnb Mandante', 'Otros Cobros Plataforma', 'Total',
-        'Recibido Banco', 'Diferencia',
-        'Comisión', 'IVA Comisión', 'Retención Fuente', 'Total a Entregar',
+        'Ingreso Reserva', 'Servicio exento IVA art.481', 'IVA Reserva',
+        'Comisión Airbnb Mandante', 'IVA Comisión Airbnb Mandante', 'Otros Cobros Plataforma',
+        'Total', 'Recibido Banco', 'Diferencia',
+        'Comisión', 'IVA Comisión', 'Retención Fuente (info)',
+        'Aseo', 'Mantenimiento', 'Otros Cobros', 'Saldo a Favor',
+        'Total a Entregar', 'Total Recibido Bancolombia',
       ],
       rows: contratos.map((c, i) => [
         i + 1,
@@ -699,6 +752,7 @@ export const exportAllHistorialToExcel = async () => {
         c.numero_reserva ?? '',
         c.ingreso_reserva ?? 0,
         c.mayor_ingreso ?? 0,
+        c.iva_reserva ?? 0,
         c.menos_comision_airbnb ?? 0,
         c.iva_comision_airbnb ?? 0,
         c.otros_cobros ?? 0,
@@ -708,9 +762,14 @@ export const exportAllHistorialToExcel = async () => {
         c.menos_comision ?? 0,
         c.menos_iva_comision ?? 0,
         c.retencion_fuente ?? 0,
+        c.gasto_aseo ?? 0,
+        c.gasto_mantenimiento ?? 0,
+        c.gasto_otros_cobros ?? 0,
+        c.gasto_saldo_favor ?? 0,
         c.total_a_entregar ?? 0,
+        c.total_recibido_bancolombia ?? 0,
       ]),
-      currencyCols: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      currencyCols: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
     },
   ];
 
@@ -810,6 +869,7 @@ export type ResumenContratoRow = {
   count: number;
   ingreso_reserva: number;
   mayor_ingreso: number;
+  iva_reserva: number;
   menos_comision_airbnb: number;
   iva_comision_airbnb: number;
   otros_cobros: number;
@@ -819,7 +879,12 @@ export type ResumenContratoRow = {
   menos_comision: number;
   menos_iva_comision: number;
   retencion_fuente: number;
+  gasto_aseo: number;
+  gasto_mantenimiento: number;
+  gasto_otros_cobros: number;
+  gasto_saldo_favor: number;
   total_a_entregar: number;
+  total_recibido_bancolombia: number;
 };
 
 export const exportResumenContratosToExcel = (
@@ -828,25 +893,31 @@ export const exportResumenContratosToExcel = (
 ) => {
   const headers = [
     'Propiedad', 'Propietario', '# Contratos',
-    'Ingreso reserva', 'Mayor ingreso',
+    'Ingreso reserva', 'Mayor ingreso', 'IVA reserva',
     'Comisión Airbnb', 'IVA com. Airbnb', 'Otros cobros',
     'Total', 'Recibido banco', 'Diferencia',
-    'Comisión', 'IVA comisión', 'Retención fuente', 'Total a entregar',
+    'Comisión', 'IVA comisión', 'Retención fuente (info)',
+    'Aseo', 'Mantenimiento', 'Otros cobros (gasto)', 'Saldo a favor',
+    'Total a entregar', 'Total Recibido Bancolombia',
   ];
-  const currencyCols = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+  const currencyCols = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
   const dataRows: (string | number | null)[][] = rows.map(r => [
     r.propiedad, r.propietario, r.count,
-    r.ingreso_reserva, r.mayor_ingreso,
+    r.ingreso_reserva, r.mayor_ingreso, r.iva_reserva,
     r.menos_comision_airbnb, r.iva_comision_airbnb, r.otros_cobros,
     r.total, r.recibido_banco, r.diferencia,
-    r.menos_comision, r.menos_iva_comision, r.retencion_fuente, r.total_a_entregar,
+    r.menos_comision, r.menos_iva_comision, r.retencion_fuente,
+    r.gasto_aseo, r.gasto_mantenimiento, r.gasto_otros_cobros, r.gasto_saldo_favor,
+    r.total_a_entregar, r.total_recibido_bancolombia,
   ]);
   const totalRow: (string | number | null)[] = [
     'TOTAL ACUMULADO', '—', grandTotal.count,
-    grandTotal.ingreso_reserva, grandTotal.mayor_ingreso,
+    grandTotal.ingreso_reserva, grandTotal.mayor_ingreso, grandTotal.iva_reserva,
     grandTotal.menos_comision_airbnb, grandTotal.iva_comision_airbnb, grandTotal.otros_cobros,
     grandTotal.total, grandTotal.recibido_banco, grandTotal.diferencia,
-    grandTotal.menos_comision, grandTotal.menos_iva_comision, grandTotal.retencion_fuente, grandTotal.total_a_entregar,
+    grandTotal.menos_comision, grandTotal.menos_iva_comision, grandTotal.retencion_fuente,
+    grandTotal.gasto_aseo, grandTotal.gasto_mantenimiento, grandTotal.gasto_otros_cobros, grandTotal.gasto_saldo_favor,
+    grandTotal.total_a_entregar, grandTotal.total_recibido_bancolombia,
   ];
 
   const ws = buildSheet(headers, [...dataRows, totalRow], currencyCols);

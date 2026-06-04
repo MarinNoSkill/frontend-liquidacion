@@ -27,7 +27,12 @@ type ContratoRecord = {
   menos_comision: number | null;
   menos_iva_comision: number | null;
   retencion_fuente: number | null;
+  gasto_aseo: number | null;
+  gasto_mantenimiento: number | null;
+  gasto_otros_cobros: number | null;
+  gasto_saldo_favor: number | null;
   total_a_entregar: number | null;
+  total_recibido_bancolombia: number | null;
   created_at: string;
 };
 

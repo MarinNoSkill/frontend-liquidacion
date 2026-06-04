@@ -21,6 +21,7 @@ type HistorialRow = {
 type IngresoRow  = { liquidacion_id: number | null; subtotal: number | null; impuesto_cargo: number | null; };
 type CompraRow   = { liquidacion_id: number | null; valor_bruto: number | null; iva: number | null; otros_impuestos: number | null; };
 type ComisionRow = { liquidacion_id: number; comision: number | null; iva_comision_19: number | null; retencion_fuente: number | null; };
+type GastosRow   = { liquidacion_id: number; aseo: number | null; mantenimiento: number | null; otros_cobros: number | null; saldo_favor: number | null };
 
 const fmtDate = (d: string) => {
   if (!d) return '';
@@ -47,7 +48,12 @@ type ContratoRecord = {
   menos_comision: number | null;
   menos_iva_comision: number | null;
   retencion_fuente: number | null;
+  gasto_aseo: number | null;
+  gasto_mantenimiento: number | null;
+  gasto_otros_cobros: number | null;
+  gasto_saldo_favor: number | null;
   total_a_entregar: number | null;
+  total_recibido_bancolombia: number | null;
   created_at: string;
 };
 
@@ -68,6 +74,7 @@ export default function LiquidacionContrato({
   const [ingresos,    setIngresos]    = useState<IngresoRow[]>([]);
   const [compras,     setCompras]     = useState<CompraRow[]>([]);
   const [comisiones,  setComisiones]  = useState<ComisionRow[]>([]);
+  const [gastos,      setGastos]      = useState<GastosRow | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [selId,       setSelId]       = useState<number | null>(liquidacionId);
   const [saving,      setSaving]      = useState(false);
@@ -76,8 +83,18 @@ export default function LiquidacionContrato({
   const [deleting,    setDeleting]    = useState(false);
   const [exporting,   setExporting]   = useState(false);
   const [exportMsg,   setExportMsg]   = useState('');
+  const [totalRecibidoBancolombia, setTotalRecibidoBancolombia] = useState<string>('');
 
   useEffect(() => { if (liquidacionId !== null) { setSelId(liquidacionId); setSaved(false); setSaveMsg(''); } }, [liquidacionId]);
+
+  // Si llega un contrato ya guardado, cargar el total recibido bancolombia guardado.
+  useEffect(() => {
+    if (contratoData?.total_recibido_bancolombia != null) {
+      setTotalRecibidoBancolombia(String(contratoData.total_recibido_bancolombia));
+    } else {
+      setTotalRecibidoBancolombia('');
+    }
+  }, [contratoData]);
 
   useEffect(() => {
     if (contratoData) { setLoading(false); return; }
@@ -105,6 +122,15 @@ export default function LiquidacionContrato({
       .then(d => setCompras(Array.isArray(d) ? d as CompraRow[] : []))
       .catch(() => setCompras([]));
   }, [selId]);
+
+  // Refetch gastos (Aseo, Mantenimiento, Otros, Saldo a favor) por liquidación
+  useEffect(() => {
+    if (!selId || contratoData) { setGastos(null); return; }
+    fetch(`${API_URL}/gastos-propietario?liquidacionId=${selId}`)
+      .then(r => r.json())
+      .then(d => setGastos(d as GastosRow | null))
+      .catch(() => setGastos(null));
+  }, [selId, contratoData]);
 
   const histFromDb = useMemo(() => historial.find(h => h.liquidacion_id === selId) ?? null, [historial, selId]);
   const hist: HistorialRow | null = contratoData
@@ -139,10 +165,15 @@ export default function LiquidacionContrato({
   const menosComision       = contratoData?.menos_comision ?? (com?.comision ?? 0);
   const menosIvaComision    = contratoData?.menos_iva_comision ?? (com?.iva_comision_19 ?? 0);
   const retencionFuente     = contratoData?.retencion_fuente ?? (com?.retencion_fuente ?? 0);
+  const gastoAseo           = contratoData?.gasto_aseo          ?? (gastos?.aseo          ?? 0);
+  const gastoMantenimiento  = contratoData?.gasto_mantenimiento ?? (gastos?.mantenimiento ?? 0);
+  const gastoOtrosCobros    = contratoData?.gasto_otros_cobros  ?? (gastos?.otros_cobros  ?? 0);
+  const gastoSaldoFavor     = contratoData?.gasto_saldo_favor   ?? (gastos?.saldo_favor   ?? 0);
 
   const total          = contratoData?.total ?? (ingresoReserva + mayorIngreso + ivaReserva - menosComisionAirbnb - ivaComisionAirbnb - otrosCobros);
   const diferencia     = contratoData?.diferencia ?? (total - recibidoBanco);
-  const totalAEntregar = contratoData?.total_a_entregar ?? (recibidoBanco - menosComision - menosIvaComision - retencionFuente);
+  // La retención en la fuente es solo informativa; no afecta el Total a Entregar.
+  const totalAEntregar = contratoData?.total_a_entregar ?? (recibidoBanco - menosComision - menosIvaComision - gastoAseo - gastoMantenimiento - gastoOtrosCobros + gastoSaldoFavor);
 
   const liqConDatos = useMemo(() => {
     const ids = new Set(ingresos.filter(i => i.liquidacion_id).map(i => i.liquidacion_id!));
@@ -160,7 +191,10 @@ export default function LiquidacionContrato({
           huesped: hist.huesped, numeroReserva: hist.numero_reserva,
           ingresoReserva, mayorIngreso, ivaReserva, menosComisionAirbnb, ivaComisionAirbnb, otrosCobros,
           total, recibidoBanco, diferencia, menosComision,
-          menosIvaComision, retencionFuente, totalAEntregar,
+          menosIvaComision, retencionFuente,
+          gastoAseo, gastoMantenimiento, gastoOtrosCobros, gastoSaldoFavor,
+          totalAEntregar,
+          totalRecibidoBancolombia: parseFloat(totalRecibidoBancolombia) || 0,
         }),
       });
       const json = await r.json() as { success?: boolean; error?: string };
@@ -180,22 +214,28 @@ export default function LiquidacionContrato({
     setExporting(true); setExportMsg('');
     try {
       await exportToExcel({
-        propietario:           hist.propietario,
-        propiedad:             hist.propiedad,
-        huesped:               hist.huesped,
-        fecha:                 hist.fecha,
-        ingreso_reserva:       ingresoReserva,
-        mayor_ingreso:         mayorIngreso,
-        menos_comision_airbnb: menosComisionAirbnb,
-        iva_comision_airbnb:   ivaComisionAirbnb,
-        otros_cobros:          otrosCobros,
+        propietario:                hist.propietario,
+        propiedad:                  hist.propiedad,
+        huesped:                    hist.huesped,
+        fecha:                      hist.fecha,
+        ingreso_reserva:            ingresoReserva,
+        mayor_ingreso:              mayorIngreso,
+        iva_reserva:                ivaReserva,
+        menos_comision_airbnb:      menosComisionAirbnb,
+        iva_comision_airbnb:        ivaComisionAirbnb,
+        otros_cobros:               otrosCobros,
         total,
-        recibido_banco:        recibidoBanco,
+        recibido_banco:             recibidoBanco,
         diferencia,
-        menos_comision:        menosComision,
-        menos_iva_comision:    menosIvaComision,
-        retencion_fuente:      retencionFuente,
-        total_a_entregar:      totalAEntregar,
+        menos_comision:             menosComision,
+        menos_iva_comision:         menosIvaComision,
+        retencion_fuente:           retencionFuente,
+        gasto_aseo:                 gastoAseo,
+        gasto_mantenimiento:        gastoMantenimiento,
+        gasto_otros_cobros:         gastoOtrosCobros,
+        gasto_saldo_favor:          gastoSaldoFavor,
+        total_a_entregar:           totalAEntregar,
+        total_recibido_bancolombia: parseFloat(totalRecibidoBancolombia) || 0,
       });
       setExportMsg('Excel descargado correctamente.');
     } catch (e) {
@@ -380,7 +420,20 @@ export default function LiquidacionContrato({
 
                   <Row label="Comisión"                                 sign="$" value={menosComision} />
                   <Row label="IVA Comisión"                             sign="$" value={menosIvaComision} />
-                  <Row label="Retención en la Fuente a Favor Zectorem"  sign="$" value={retencionFuente} />
+                  <tr style={{ borderTop: '1px solid #f1f5f9' }} title="Informativo: no afecta el Total a Entregar.">
+                    <td style={{ padding: '0.5rem 1.25rem', fontWeight: 500, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#dc2626' }}>
+                      Retención en la Fuente a Favor Zectorem <span style={{ fontSize: '0.65rem', fontWeight: 700, marginLeft: '0.35rem', opacity: 0.8 }}>(informativo)</span>
+                    </td>
+                    <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#dc2626', width: '2.5rem' }}>-$</td>
+                    <td style={{ padding: '0.5rem 1.25rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', color: '#dc2626' }}>
+                      {retencionFuente === 0 ? '-' : `-${fmt(Math.abs(retencionFuente))}`}
+                    </td>
+                  </tr>
+
+                  <Row label="Aseo"             sign="-$" value={gastoAseo}          negative />
+                  <Row label="Mantenimiento"    sign="-$" value={gastoMantenimiento} negative />
+                  <Row label="Otros Cobros"     sign="-$" value={gastoOtrosCobros}   negative />
+                  <Row label="Saldo a Favor"    sign="$"  value={gastoSaldoFavor} />
 
                   {/* TOTAL A ENTREGAR */}
                   <tr style={{ background: '#0f172a', borderTop: '3px solid #0f172a' }}>
@@ -389,6 +442,30 @@ export default function LiquidacionContrato({
                     </td>
                     <td style={{ padding: '0.8rem 1.25rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: '#34d399', whiteSpace: 'nowrap' }}>
                       {fmt(totalAEntregar)}
+                    </td>
+                  </tr>
+
+                  {/* TOTAL RECIBIDO BANCOLOMBIA (editable manual) */}
+                  <tr style={{ borderTop: '1px solid #f1f5f9', background: '#f8fafc' }} title="Valor ingresado manualmente para conciliación con el extracto de Bancolombia.">
+                    <td style={{ padding: '0.65rem 1.25rem', fontWeight: 800, fontSize: '0.825rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a' }}>
+                      Total Recibido Bancolombia
+                    </td>
+                    <td style={{ padding: '0.65rem 0.5rem', textAlign: 'center', fontSize: '0.825rem', color: '#64748b', width: '2.5rem' }}>$</td>
+                    <td style={{ padding: '0.4rem 1.25rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <input
+                        type="number"
+                        value={totalRecibidoBancolombia}
+                        onChange={e => setTotalRecibidoBancolombia(e.target.value)}
+                        placeholder="0.00"
+                        disabled={!!contratoData && saved}
+                        style={{
+                          width: '12rem', maxWidth: '100%',
+                          padding: '0.4rem 0.65rem', borderRadius: '0.45rem',
+                          border: '1px solid #cbd5e1', background: '#fff',
+                          fontSize: '0.875rem', fontWeight: 800, color: '#0f172a',
+                          textAlign: 'right', outline: 'none',
+                        }}
+                      />
                     </td>
                   </tr>
                 </tbody>

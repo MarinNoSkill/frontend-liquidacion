@@ -23,7 +23,12 @@ type ContratoRecord = {
   menos_comision: number | null;
   menos_iva_comision: number | null;
   retencion_fuente: number | null;
+  gasto_aseo: number | null;
+  gasto_mantenimiento: number | null;
+  gasto_otros_cobros: number | null;
+  gasto_saldo_favor: number | null;
   total_a_entregar: number | null;
+  total_recibido_bancolombia: number | null;
   created_at: string;
 };
 
@@ -76,6 +81,7 @@ export default function HistorialContratos({
     count: number;
     ingreso_reserva: number;
     mayor_ingreso: number;
+    iva_reserva: number;
     menos_comision_airbnb: number;
     iva_comision_airbnb: number;
     otros_cobros: number;
@@ -85,7 +91,12 @@ export default function HistorialContratos({
     menos_comision: number;
     menos_iva_comision: number;
     retencion_fuente: number;
+    gasto_aseo: number;
+    gasto_mantenimiento: number;
+    gasto_otros_cobros: number;
+    gasto_saldo_favor: number;
     total_a_entregar: number;
+    total_recibido_bancolombia: number;
   };
 
   const resumen = useMemo<ResumenRow[]>(() => {
@@ -98,6 +109,7 @@ export default function HistorialContratos({
         count: 0,
         ingreso_reserva: 0,
         mayor_ingreso: 0,
+        iva_reserva: 0,
         menos_comision_airbnb: 0,
         iva_comision_airbnb: 0,
         otros_cobros: 0,
@@ -107,21 +119,32 @@ export default function HistorialContratos({
         menos_comision: 0,
         menos_iva_comision: 0,
         retencion_fuente: 0,
+        gasto_aseo: 0,
+        gasto_mantenimiento: 0,
+        gasto_otros_cobros: 0,
+        gasto_saldo_favor: 0,
         total_a_entregar: 0,
+        total_recibido_bancolombia: 0,
       };
       existing.count += 1;
-      existing.ingreso_reserva       += c.ingreso_reserva       ?? 0;
-      existing.mayor_ingreso         += c.mayor_ingreso         ?? 0;
-      existing.menos_comision_airbnb += c.menos_comision_airbnb ?? 0;
-      existing.iva_comision_airbnb   += c.iva_comision_airbnb   ?? 0;
-      existing.otros_cobros          += c.otros_cobros          ?? 0;
-      existing.total                 += c.total                 ?? 0;
-      existing.recibido_banco        += c.recibido_banco        ?? 0;
-      existing.diferencia            += c.diferencia            ?? 0;
-      existing.menos_comision        += c.menos_comision        ?? 0;
-      existing.menos_iva_comision    += c.menos_iva_comision    ?? 0;
-      existing.retencion_fuente      += c.retencion_fuente      ?? 0;
-      existing.total_a_entregar      += c.total_a_entregar      ?? 0;
+      existing.ingreso_reserva            += c.ingreso_reserva            ?? 0;
+      existing.mayor_ingreso              += c.mayor_ingreso              ?? 0;
+      existing.iva_reserva                += c.iva_reserva                ?? 0;
+      existing.menos_comision_airbnb      += c.menos_comision_airbnb      ?? 0;
+      existing.iva_comision_airbnb        += c.iva_comision_airbnb        ?? 0;
+      existing.otros_cobros               += c.otros_cobros               ?? 0;
+      existing.total                      += c.total                      ?? 0;
+      existing.recibido_banco             += c.recibido_banco             ?? 0;
+      existing.diferencia                 += c.diferencia                 ?? 0;
+      existing.menos_comision             += c.menos_comision             ?? 0;
+      existing.menos_iva_comision         += c.menos_iva_comision         ?? 0;
+      existing.retencion_fuente           += c.retencion_fuente           ?? 0;
+      existing.gasto_aseo                 += c.gasto_aseo                 ?? 0;
+      existing.gasto_mantenimiento        += c.gasto_mantenimiento        ?? 0;
+      existing.gasto_otros_cobros         += c.gasto_otros_cobros         ?? 0;
+      existing.gasto_saldo_favor          += c.gasto_saldo_favor          ?? 0;
+      existing.total_a_entregar           += c.total_a_entregar           ?? 0;
+      existing.total_recibido_bancolombia += c.total_recibido_bancolombia ?? 0;
       groups.set(key, existing);
     }
     return Array.from(groups.values()).sort((a, b) => a.propiedad.localeCompare(b.propiedad));
@@ -130,24 +153,33 @@ export default function HistorialContratos({
   const grandTotal = useMemo<ResumenRow>(() => resumen.reduce<ResumenRow>((acc, r) => ({
     propiedad: 'Total acumulado',
     propietario: '—',
-    count:                   acc.count                   + r.count,
-    ingreso_reserva:         acc.ingreso_reserva         + r.ingreso_reserva,
-    mayor_ingreso:           acc.mayor_ingreso           + r.mayor_ingreso,
-    menos_comision_airbnb:   acc.menos_comision_airbnb   + r.menos_comision_airbnb,
-    iva_comision_airbnb:     acc.iva_comision_airbnb     + r.iva_comision_airbnb,
-    otros_cobros:            acc.otros_cobros            + r.otros_cobros,
-    total:                   acc.total                   + r.total,
-    recibido_banco:          acc.recibido_banco          + r.recibido_banco,
-    diferencia:              acc.diferencia              + r.diferencia,
-    menos_comision:          acc.menos_comision          + r.menos_comision,
-    menos_iva_comision:      acc.menos_iva_comision      + r.menos_iva_comision,
-    retencion_fuente:        acc.retencion_fuente        + r.retencion_fuente,
-    total_a_entregar:        acc.total_a_entregar        + r.total_a_entregar,
+    count:                       acc.count                       + r.count,
+    ingreso_reserva:             acc.ingreso_reserva             + r.ingreso_reserva,
+    mayor_ingreso:               acc.mayor_ingreso               + r.mayor_ingreso,
+    iva_reserva:                 acc.iva_reserva                 + r.iva_reserva,
+    menos_comision_airbnb:       acc.menos_comision_airbnb       + r.menos_comision_airbnb,
+    iva_comision_airbnb:         acc.iva_comision_airbnb         + r.iva_comision_airbnb,
+    otros_cobros:                acc.otros_cobros                + r.otros_cobros,
+    total:                       acc.total                       + r.total,
+    recibido_banco:              acc.recibido_banco              + r.recibido_banco,
+    diferencia:                  acc.diferencia                  + r.diferencia,
+    menos_comision:              acc.menos_comision              + r.menos_comision,
+    menos_iva_comision:          acc.menos_iva_comision          + r.menos_iva_comision,
+    retencion_fuente:            acc.retencion_fuente            + r.retencion_fuente,
+    gasto_aseo:                  acc.gasto_aseo                  + r.gasto_aseo,
+    gasto_mantenimiento:         acc.gasto_mantenimiento         + r.gasto_mantenimiento,
+    gasto_otros_cobros:          acc.gasto_otros_cobros          + r.gasto_otros_cobros,
+    gasto_saldo_favor:           acc.gasto_saldo_favor           + r.gasto_saldo_favor,
+    total_a_entregar:            acc.total_a_entregar            + r.total_a_entregar,
+    total_recibido_bancolombia:  acc.total_recibido_bancolombia  + r.total_recibido_bancolombia,
   }), {
     propiedad: 'Total acumulado', propietario: '—', count: 0,
-    ingreso_reserva: 0, mayor_ingreso: 0, menos_comision_airbnb: 0, iva_comision_airbnb: 0,
-    otros_cobros: 0, total: 0, recibido_banco: 0, diferencia: 0,
-    menos_comision: 0, menos_iva_comision: 0, retencion_fuente: 0, total_a_entregar: 0,
+    ingreso_reserva: 0, mayor_ingreso: 0, iva_reserva: 0,
+    menos_comision_airbnb: 0, iva_comision_airbnb: 0, otros_cobros: 0,
+    total: 0, recibido_banco: 0, diferencia: 0,
+    menos_comision: 0, menos_iva_comision: 0, retencion_fuente: 0,
+    gasto_aseo: 0, gasto_mantenimiento: 0, gasto_otros_cobros: 0, gasto_saldo_favor: 0,
+    total_a_entregar: 0, total_recibido_bancolombia: 0,
   }), [resumen]);
 
   const handleDelete = async (id: number) => {
@@ -417,6 +449,7 @@ export default function HistorialContratos({
                     <th style={{ textAlign: 'center' }}># Contratos</th>
                     <th>Ingreso reserva</th>
                     <th>Mayor ingreso</th>
+                    <th>IVA reserva</th>
                     <th>Comisión Airbnb</th>
                     <th>IVA com. Airbnb</th>
                     <th>Otros cobros</th>
@@ -425,8 +458,13 @@ export default function HistorialContratos({
                     <th>Diferencia</th>
                     <th>Comisión</th>
                     <th>IVA comisión</th>
-                    <th>Retención fuente</th>
+                    <th>Retención fuente (info)</th>
+                    <th>Aseo</th>
+                    <th>Mantenimiento</th>
+                    <th>Otros cobros (gasto)</th>
+                    <th>Saldo a favor</th>
                     <th>Total a entregar</th>
+                    <th>Total Recibido Bancolombia</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -437,6 +475,7 @@ export default function HistorialContratos({
                       <td style={{ textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}>{r.count}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{fmt(r.ingreso_reserva)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{fmt(r.mayor_ingreso)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{fmt(r.iva_reserva)}</td>
                       <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.menos_comision_airbnb)}</td>
                       <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.iva_comision_airbnb)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{fmt(r.otros_cobros)}</td>
@@ -446,7 +485,12 @@ export default function HistorialContratos({
                       <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.menos_comision)}</td>
                       <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.menos_iva_comision)}</td>
                       <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.retencion_fuente)}</td>
+                      <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.gasto_aseo)}</td>
+                      <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.gasto_mantenimiento)}</td>
+                      <td style={{ whiteSpace: 'nowrap', color: '#dc2626' }}>{fmt(r.gasto_otros_cobros)}</td>
+                      <td style={{ whiteSpace: 'nowrap', color: '#059669' }}>{fmt(r.gasto_saldo_favor)}</td>
                       <td style={{ whiteSpace: 'nowrap', fontWeight: 700, color: '#10b981' }}>{fmt(r.total_a_entregar)}</td>
+                      <td style={{ whiteSpace: 'nowrap', fontWeight: 700 }}>{fmt(r.total_recibido_bancolombia)}</td>
                     </tr>
                   ))}
                   <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
@@ -455,6 +499,7 @@ export default function HistorialContratos({
                     <td style={{ textAlign: 'center', fontWeight: 900, color: '#1d4ed8' }}>{grandTotal.count}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{fmt(grandTotal.ingreso_reserva)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{fmt(grandTotal.mayor_ingreso)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{fmt(grandTotal.iva_reserva)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.menos_comision_airbnb)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.iva_comision_airbnb)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{fmt(grandTotal.otros_cobros)}</td>
@@ -464,7 +509,12 @@ export default function HistorialContratos({
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.menos_comision)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.menos_iva_comision)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.retencion_fuente)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.gasto_aseo)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.gasto_mantenimiento)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#dc2626' }}>{fmt(grandTotal.gasto_otros_cobros)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800, color: '#059669' }}>{fmt(grandTotal.gasto_saldo_favor)}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 900, color: '#10b981' }}>{fmt(grandTotal.total_a_entregar)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 900 }}>{fmt(grandTotal.total_recibido_bancolombia)}</td>
                   </tr>
                 </tbody>
               </table>

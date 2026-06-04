@@ -89,7 +89,7 @@ const fieldWrap = (label: string, children: React.ReactNode) => (
 export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }: { onNavigate: (view: string) => void; currency?: Currency }) {
   const fmt = (v: number | null | undefined) => formatCurrency(v, currency);
 
-  const [subForm, setSubForm] = useState<'ingresos' | 'compras'>('ingresos');
+  const [subForm, setSubForm] = useState<'ingresos' | 'compras' | 'gastos'>('ingresos');
 
   // Historial compartido para ambos formularios
   const [historial, setHistorial] = useState<HistorialItem[]>([]);
@@ -120,6 +120,20 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
   const [cmpAssigning, setCmpAssigning] = useState<number | null>(null);
   const [cmpAssignLiq, setCmpAssignLiq] = useState('');
 
+  // ── Estado gastos (Aseo, Mantenimiento, Otros cobros, Saldo a favor) ──
+  type GastoRow = { id: number; fecha?: string | null; liquidacion_id: number; aseo: number | null; mantenimiento: number | null; otros_cobros: number | null; saldo_favor: number | null };
+  const [gastoLiqId,       setGastoLiqId]       = useState('');
+  const [gastoAseo,        setGastoAseo]        = useState('');
+  const [gastoMant,        setGastoMant]        = useState('');
+  const [gastoOtros,       setGastoOtros]       = useState('');
+  const [gastoSaldo,       setGastoSaldo]       = useState('');
+  const [gastoSaving,      setGastoSaving]      = useState(false);
+  const [gastoMsg,         setGastoMsg]         = useState('');
+  const [gastoCurrent,     setGastoCurrent]     = useState<GastoRow | null>(null);
+  const [gastosList,       setGastosList]       = useState<GastoRow[]>([]);
+  const [gastosLoading,    setGastosLoading]    = useState(true);
+  const [gastoDeleting,    setGastoDeleting]    = useState<number | null>(null);
+
   // ── Carga inicial ──
   useEffect(() => {
     fetch(`${API_URL}/historial`)
@@ -144,6 +158,33 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
       .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() as Promise<CompraRow[]>; })
       .then(d => { setCompras(Array.isArray(d) ? d : []); setCmpLoading(false); })
       .catch(() => { setCompras([]); setCmpLoading(false); });
+  }, []);
+
+  // ── Cargar gastos para la liquidación seleccionada ──
+  useEffect(() => {
+    if (!gastoLiqId) {
+      setGastoCurrent(null);
+      setGastoAseo(''); setGastoMant(''); setGastoOtros(''); setGastoSaldo('');
+      return;
+    }
+    fetch(`${API_URL}/gastos-propietario?liquidacionId=${gastoLiqId}`)
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() as Promise<GastoRow | null>; })
+      .then(d => {
+        setGastoCurrent(d);
+        setGastoAseo (d?.aseo          != null ? String(d.aseo)          : '');
+        setGastoMant (d?.mantenimiento != null ? String(d.mantenimiento) : '');
+        setGastoOtros(d?.otros_cobros  != null ? String(d.otros_cobros)  : '');
+        setGastoSaldo(d?.saldo_favor   != null ? String(d.saldo_favor)   : '');
+      })
+      .catch(() => { setGastoCurrent(null); });
+  }, [gastoLiqId]);
+
+  // ── Listado de gastos guardados ──
+  useEffect(() => {
+    fetch(`${API_URL}/gastos-propietario`)
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() as Promise<GastoRow[]>; })
+      .then(d => { setGastosList(Array.isArray(d) ? d : []); setGastosLoading(false); })
+      .catch(() => { setGastosList([]); setGastosLoading(false); });
   }, []);
 
   // ── Cálculos ingreso ──
@@ -236,6 +277,61 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
     setIngDeleting(null);
   };
 
+  // ── Guardar gastos (Aseo, Mantenimiento, Otros, Saldo a favor) ──
+  const handleSaveGastos = async () => {
+    if (!gastoLiqId) { setGastoMsg('Selecciona una liquidación.'); return; }
+    setGastoSaving(true); setGastoMsg('');
+    try {
+      const r = await fetch(`${API_URL}/gastos-propietario`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          liquidacionId: Number(gastoLiqId),
+          aseo:          parseFloat(gastoAseo)  || 0,
+          mantenimiento: parseFloat(gastoMant)  || 0,
+          otrosCobros:   parseFloat(gastoOtros) || 0,
+          saldoFavor:    parseFloat(gastoSaldo) || 0,
+        }),
+      });
+      const json = await r.json() as { success?: boolean; data?: GastoRow; error?: string };
+      if (json.success && json.data) {
+        setGastoCurrent(json.data);
+        // refrescar la lista (reemplaza si existe, agrega si es nuevo)
+        setGastosList(prev => {
+          const exists = prev.some(g => g.id === json.data!.id);
+          return exists
+            ? prev.map(g => g.id === json.data!.id ? json.data! : g)
+            : [json.data!, ...prev];
+        });
+        setGastoMsg('Gastos guardados. Redirigiendo a la liquidación contrato…');
+        const liqFinal = Number(gastoLiqId);
+        setTimeout(() => onNavigate(`contrato:${liqFinal}`), 600);
+      } else {
+        setGastoMsg(`Error: ${json.error ?? 'desconocido'}`);
+      }
+    } catch { setGastoMsg('No se pudo conectar al backend.'); }
+    setGastoSaving(false);
+  };
+
+  // ── Eliminar gastos ──
+  const handleDeleteGastos = async (id: number) => {
+    if (!window.confirm('¿Eliminar este registro de gastos?')) return;
+    setGastoDeleting(id);
+    try {
+      const r = await fetch(`${API_URL}/gastos-propietario/${id}`, { method: 'DELETE' });
+      const json = await r.json() as { success?: boolean };
+      if (json.success) {
+        setGastosList(prev => prev.filter(g => g.id !== id));
+        // Si estaba editando este mismo registro, limpia los inputs
+        if (gastoCurrent?.id === id) {
+          setGastoCurrent(null);
+          setGastoLiqId('');
+          setGastoAseo(''); setGastoMant(''); setGastoOtros(''); setGastoSaldo('');
+        }
+      }
+    } catch { /* ignore */ }
+    setGastoDeleting(null);
+  };
+
   // ── Guardar compra(s) ──
   const handleSaveCompra = async () => {
     if (!cmpLiqId) { setCmpMsg('Selecciona una liquidación.'); return; }
@@ -276,7 +372,10 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
     else {
       const liqFinal = sel.liquidacion_id;
       setCmpItems([emptyCmp()]); setCmpLiqId(''); setAddCmpOpen(false);
-      onNavigate(`contrato:${liqFinal}`);
+      // Después de guardar compras, ir al formulario de Gastos para esa misma liquidación.
+      setGastoLiqId(String(liqFinal));
+      setGastoMsg('');
+      setSubForm('gastos');
     }
     setCmpSaving(false);
   };
@@ -430,6 +529,21 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
               </div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
                 Egresos y servicios del mandante
+              </div>
+            </button>
+            <button type="button"
+              onClick={() => setSubForm('gastos')}
+              style={{
+                flex: '1 1 260px', padding: '0.875rem 1rem', borderRadius: '0.875rem', textAlign: 'left',
+                border: `2px solid ${subForm === 'gastos' ? '#10b981' : '#e2e8f0'}`,
+                background: subForm === 'gastos' ? '#ecfdf5' : '#f8fafc',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+              <div style={{ fontWeight: 800, color: subForm === 'gastos' ? '#047857' : '#0f172a', fontSize: '0.9rem' }}>
+                Gastos
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                Aseo, mantenimiento, otros cobros y saldo a favor
               </div>
             </button>
           </div>
@@ -810,6 +924,115 @@ export default function LiquidacionPropietario({ onNavigate, currency = 'COP' }:
               )}
             </div>
           </>
+        )}
+
+        {/* ═══ FORMULARIO GASTOS ═══ */}
+        {subForm === 'gastos' && (
+          <div className="content-card" style={{ border: '2px solid #6ee7b7' }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <span className="card-eyebrow" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #6ee7b7' }}>
+                Gastos del mandante
+              </span>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '0.5rem' }}>
+                Aseo, mantenimiento, otros cobros y saldo a favor
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>
+                Si no aplica, deja el campo en blanco o en 0. Aseo, mantenimiento y otros cobros se restan; saldo a favor suma.
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>
+                Liquidación
+              </label>
+              <select value={gastoLiqId} onChange={e => setGastoLiqId(e.target.value)} style={inputStyle}>
+                <option value="">— Selecciona una liquidación —</option>
+                {historial.map(h => (
+                  <option key={h.liquidacion_id} value={h.liquidacion_id}>
+                    {h.propiedad} — {h.huesped} — {h.numero_reserva ?? 'S/N'} ({fmtDate(h.fecha)})
+                  </option>
+                ))}
+              </select>
+              {gastoCurrent && (
+                <p style={{ fontSize: '0.75rem', color: '#047857', marginTop: '0.4rem', fontWeight: 700 }}>
+                  Ya hay gastos guardados para esta liquidación — se actualizarán al guardar.
+                </p>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.875rem' }}>
+              {fieldWrap('Aseo',
+                <input type="number" value={gastoAseo} onChange={e => setGastoAseo(e.target.value)} placeholder="0.00" style={inputStyle} />
+              )}
+              {fieldWrap('Mantenimiento',
+                <input type="number" value={gastoMant} onChange={e => setGastoMant(e.target.value)} placeholder="0.00" style={inputStyle} />
+              )}
+              {fieldWrap('Otros cobros',
+                <input type="number" value={gastoOtros} onChange={e => setGastoOtros(e.target.value)} placeholder="0.00" style={inputStyle} />
+              )}
+              {fieldWrap('Saldo a favor',
+                <input type="number" value={gastoSaldo} onChange={e => setGastoSaldo(e.target.value)} placeholder="0.00" style={inputStyle} />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" disabled={gastoSaving || !gastoLiqId} onClick={handleSaveGastos}>
+                {gastoSaving ? 'Guardando…' : (gastoCurrent ? 'Actualizar gastos' : 'Guardar gastos')}
+              </button>
+              {gastoMsg && (
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: gastoMsg.startsWith('Error') || gastoMsg.startsWith('No') || gastoMsg.startsWith('Selecciona') ? '#dc2626' : '#059669' }}>
+                  {gastoMsg}
+                </span>
+              )}
+            </div>
+
+            {/* Tabla de gastos guardados */}
+            <div style={{ marginTop: '2rem' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '0.5rem', color: '#0f172a' }}>Gastos registrados</h4>
+              {gastosLoading ? (
+                <div style={{ padding: '1rem', color: '#64748b', textAlign: 'center', fontSize: '0.875rem' }}>Cargando…</div>
+              ) : gastosList.length === 0 ? (
+                <div style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center', fontSize: '0.875rem', fontStyle: 'italic' }}>
+                  No hay gastos guardados todavía.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '0.625rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Fecha</th>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Liquidación</th>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'right', fontWeight: 700, color: '#475569' }}>Aseo</th>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'right', fontWeight: 700, color: '#475569' }}>Mantenimiento</th>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'right', fontWeight: 700, color: '#475569' }}>Otros cobros</th>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'right', fontWeight: 700, color: '#475569' }}>Saldo a favor</th>
+                        <th style={{ padding: '0.6rem 0.875rem', textAlign: 'center', fontWeight: 700, color: '#475569', width: '4rem' }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gastosList.map(r => {
+                        const liq = historial.find(h => h.liquidacion_id === r.liquidacion_id);
+                        const liqLabel = liq
+                          ? `${liq.propiedad} — ${liq.huesped} — ${liq.numero_reserva ?? 'S/N'}`
+                          : `Liq #${r.liquidacion_id}`;
+                        return (
+                          <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.55rem 0.875rem', color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDate(r.fecha)}</td>
+                            <td style={{ padding: '0.55rem 0.875rem', fontWeight: 600, color: '#0f172a' }}>{liqLabel}</td>
+                            <td style={{ padding: '0.55rem 0.875rem', textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap' }}>{fmt(r.aseo)}</td>
+                            <td style={{ padding: '0.55rem 0.875rem', textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap' }}>{fmt(r.mantenimiento)}</td>
+                            <td style={{ padding: '0.55rem 0.875rem', textAlign: 'right', color: '#dc2626', whiteSpace: 'nowrap' }}>{fmt(r.otros_cobros)}</td>
+                            <td style={{ padding: '0.55rem 0.875rem', textAlign: 'right', color: '#059669', whiteSpace: 'nowrap', fontWeight: 700 }}>{fmt(r.saldo_favor)}</td>
+                            {deleteBtn(r.id, gastoDeleting === r.id, handleDeleteGastos)}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
       </div>
