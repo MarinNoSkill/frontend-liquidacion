@@ -208,6 +208,18 @@ export default function HistorialContratos({
     }
   };
 
+  const handleExportSelected = async () => {
+    setExporting(true); setExportMsg('');
+    try {
+      await exportAllHistorialToExcel(filtered.map(c => c.id));
+      setExportMsg('Excel de seleccionados descargado correctamente.');
+    } catch (e) {
+      setExportMsg(`Error al exportar: ${e instanceof Error ? e.message : 'desconocido'}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleExportResumen = () => {
     setExportMsg('');
     try {
@@ -307,6 +319,21 @@ export default function HistorialContratos({
                 }}
               >
                 {exporting ? 'Generando…' : 'Descargar Excel (todos)'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportSelected}
+                disabled={exporting || selectedProps.length === 0 || filtered.length === 0}
+                title={selectedProps.length === 0 ? 'Selecciona al menos una propiedad para habilitar esta opción' : 'Descargar solo los contratos filtrados'}
+                style={{
+                  padding: '0.625rem 1.25rem', borderRadius: '0.625rem',
+                  border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d',
+                  fontWeight: 700, fontSize: '0.875rem',
+                  cursor: exporting || selectedProps.length === 0 || filtered.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: exporting || selectedProps.length === 0 || filtered.length === 0 ? 0.6 : 1,
+                }}
+              >
+                {exporting ? 'Generando…' : `Descargar Excel (seleccionados${selectedProps.length > 0 ? `: ${filtered.length}` : ''})`}
               </button>
               <button
                 type="button"

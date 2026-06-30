@@ -592,7 +592,9 @@ type HistCmpContrato = {
   valor_a_pagar: number | null;
 };
 
-export const exportAllHistorialToExcel = async () => {
+// `filterIds` (opcional) limita la exportación a los contratos cuyo `id`
+// esté en la lista. Si se omite o está vacío, se exportan todos.
+export const exportAllHistorialToExcel = async (filterIds?: number[]) => {
   const res = await fetch(`${API_URL}/contratos-propietario/historial-bulk`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json() as {
@@ -603,11 +605,17 @@ export const exportAllHistorialToExcel = async () => {
     compras: HistCmpContrato[];
   };
 
-  const contratos     = Array.isArray(json.contratos)     ? json.contratos     : [];
-  const liquidaciones = Array.isArray(json.liquidaciones) ? json.liquidaciones : [];
-  const comisiones    = Array.isArray(json.comisiones)    ? json.comisiones    : [];
-  const ingresos      = Array.isArray(json.ingresos)      ? json.ingresos      : [];
-  const compras       = Array.isArray(json.compras)       ? json.compras       : [];
+  const idSet = filterIds && filterIds.length > 0 ? new Set(filterIds) : null;
+  const keep = <T extends { contrato_propietario_id: number }>(arr: T[]) =>
+    idSet ? arr.filter(x => idSet.has(x.contrato_propietario_id)) : arr;
+
+  const contratos     = idSet
+    ? (Array.isArray(json.contratos) ? json.contratos : []).filter(c => idSet.has(c.id))
+    : (Array.isArray(json.contratos) ? json.contratos : []);
+  const liquidaciones = keep(Array.isArray(json.liquidaciones) ? json.liquidaciones : []);
+  const comisiones    = keep(Array.isArray(json.comisiones)    ? json.comisiones    : []);
+  const ingresos      = keep(Array.isArray(json.ingresos)      ? json.ingresos      : []);
+  const compras       = keep(Array.isArray(json.compras)       ? json.compras       : []);
 
   const contratoLookup = new Map(contratos.map(c => [c.id, c]));
   const propLabel = (id: number | null | undefined) => {
@@ -858,7 +866,8 @@ export const exportAllHistorialToExcel = async () => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Historial Contratos');
 
-  const filename = `Historial_Contratos_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const sufijo = idSet ? `seleccion_${contratos.length}` : 'todos';
+  const filename = `Historial_Contratos_${sufijo}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
 
